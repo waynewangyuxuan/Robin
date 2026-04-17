@@ -97,9 +97,24 @@ this is normal only if `current_stage` is `"done"`. Otherwise it's an anomaly
 Only meaningful during Execute → Review cycles. Tracks which batch of tasks is
 currently being executed and its review iteration count.
 
+**`tasks[]`** mirrors the `dispatch_batch` signal: one entry per task the batch
+dispatched, identified by `task_id`. Each entry's `status` moves from
+`dispatched` → (`complete` | `failed`) exactly once, at which point `settled_at`
+is stamped. A task in `dispatched` state always has `settled_at: null`.
+
+**`failed_tasks[]`** is a denormalized lookup view — the list of `task_id`s
+whose `tasks[]` entry is `status: "failed"`. The kernel MUST keep it in sync
+(see canonical sequence in Invariants). It exists so routing decisions that
+only care about the failure set can check one field instead of filtering
+`tasks[]`.
+
+A batch is **settled** when every entry in `tasks[]` has `status != "dispatched"`.
+Settlement triggers the batch-settled rule (see SKILL.md) exactly once.
+
 When a batch completes review (pass or budget-exhausted fail), `current_batch`
-either advances to the next batch (set to a new batch_id) or clears to null
-(if Execute-Control is about to determine the next batch).
+either advances to the next batch (set to a new batch_id, new tasks[],
+`failed_tasks: []`) or clears to null (if Execute-Control is about to
+determine the next batch).
 
 ### `plan_pointer`
 A lightweight index into the plan artifacts stored in the project's Feature
@@ -116,7 +131,12 @@ field only tells the kernel "where to look" and "what's done".
   null
 - If `current_batch.batch_id` is not null, `current_batch.tasks[]` must contain
   one entry per task in the latest `dispatch_batch` signal (same task_ids)
-- `current_batch.failed_tasks` ⊆ `{t.task_id for t in current_batch.tasks if t.status == "failed"}`
+- `current_batch.tasks` cannot contain two entries with the same `task_id`
+- `current_batch.failed_tasks` cannot contain duplicate `task_id`s
+- `current_batch.failed_tasks` = `{t.task_id for t in current_batch.tasks if t.status == "failed"}`
+  (equality, not subset — the denormalized view must stay in sync with `tasks[]`)
+- For every `t` in `current_batch.tasks`: `t.settled_at` is `null` iff
+  `t.status == "dispatched"` (both null or both non-null, never mixed)
 - A batch is **settled** iff every entry in `current_batch.tasks[]` has
   `status != "dispatched"`. The batch-settled rule (see SKILL.md) fires exactly
   once per batch, at the first turn after settlement
@@ -124,6 +144,22 @@ field only tells the kernel "where to look" and "what's done".
   (if they diverge, kernel re-reads the ledger's last line to reconcile and
   writes an `anomaly` entry)
 - `active_invocations` cannot contain two entries with the same `invocation_id`
+
+### Canonical update sequence
+
+When routing `execute_complete` for task `T`:
+1. Find entry `t` in `current_batch.tasks` with `t.task_id == T`
+2. Set `t.status = "complete"`, `t.settled_at = now()`
+3. No change to `failed_tasks`
+
+When routing `execute_failed` for task `T`:
+1. Find entry `t` in `current_batch.tasks` with `t.task_id == T`
+2. Set `t.status = "failed"`, `t.settled_at = now()`
+3. Append `T` to `current_batch.failed_tasks` (guard against duplicates)
+
+Both sequences are atomic from the kernel's perspective — both `tasks[]` and
+`failed_tasks[]` must be updated together, in the same `stage-state.json`
+write, so the equality invariant holds at every observable state.
 
 ---
 
@@ -175,9 +211,9 @@ the next invocation reads `stage-state.json` and resumes:
     "milestone_ids": ["m2-api-endpoints", "m3-auth-middleware"],
     "tasks": [
       {"task_id": "batch-3-task-1", "status": "complete", "settled_at": "2026-04-16T14:42:00Z"},
-      {"task_id": "batch-3-task-2", "status": "complete", "settled_at": "2026-04-16T14:43:00Z"}
+      {"task_id": "batch-3-task-2", "status": "failed", "settled_at": "2026-04-16T14:43:00Z"}
     ],
-    "failed_tasks": [],
+    "failed_tasks": ["batch-3-task-2"],
     "review_iteration": 2,
     "status": "reviewing"
   },
