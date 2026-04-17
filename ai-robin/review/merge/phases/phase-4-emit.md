@@ -35,6 +35,94 @@ Always `true`. The kernel commits every merged verdict regardless of
 pass/fail. This field exists for schema symmetry with other signals,
 not as a gate.
 
+## Compose `commit_message`
+
+**Autonomy: guided** (content); **explicit** (format).
+
+The kernel uses `payload.commit_message` verbatim as the git commit
+message. You are the authoritative producer — the kernel does NOT
+synthesize its own. Write a message that a human reviewer scanning
+`git log` can understand without reading the code.
+
+### Format
+
+Conventional-Commits-style header + body, separated by a blank line:
+
+```
+<type>(<scope>): <short description> (batch-<N>)
+
+Review: <overall_status> (iteration <N>)
+<one-or-two-line summary of key findings>
+
+Milestones: <m1-id>, <m2-id>, ...
+Playbooks run: <playbook_1>, <playbook_2>, ...
+```
+
+- `<type>`: infer from the batch's change specs. Common values:
+  `feat` (new functionality), `fix` (bug fix), `refactor`, `test`,
+  `docs`, `chore`. If the batch is heterogeneous, use `feat`.
+- `<scope>`: the primary room affected (e.g., `api`, `db`, `frontend`).
+  If the batch spans rooms, pick the room with the most milestones.
+- `<short description>`: one clause describing what the batch produced.
+  Draw from milestone names or from `consolidated_issues`.
+- `<N>`: `batch_id` suffix.
+- Body: mirror `summary` but formatted for git log readability.
+
+### Three concrete examples
+
+**Pass**:
+```
+feat(api): implement user CRUD endpoints (batch-3)
+
+Review: pass (iteration 1)
+All 3 playbooks clean. No issues flagged.
+
+Milestones: m2-api-endpoints, m3-auth-middleware
+Playbooks run: code-quality, backend-api, test-coverage
+```
+
+**Pass with warnings**:
+```
+feat(api): implement user CRUD endpoints (batch-3)
+
+Review: pass_with_warnings (iteration 1)
+1 quality warning on function length, non-blocking.
+
+Milestones: m2-api-endpoints, m3-auth-middleware
+Playbooks run: code-quality, backend-api, test-coverage
+```
+
+**Fail** (kernel still commits the failed attempt per hard rule):
+```
+review(failed): batch-3 iteration 1 — uniqueness check missing
+
+Review: fail (iteration 1)
+1 blocking issue: user creation inserts without email uniqueness check.
+backend-api and db-schema both flagged; replan will follow.
+
+Milestones: m2-api-endpoints, m3-auth-middleware
+Playbooks run: code-quality, backend-api, db-schema, test-coverage
+```
+
+Note the `review(failed):` type for failed iterations — this distinguishes
+failed-attempt commits from successful ones in `git log`.
+
+### When commit_message cannot be composed
+
+If `sub_verdicts` is empty (zero playbooks returned) or all sub-verdicts
+were malformed, produce a fallback message:
+
+```
+review(anomaly): batch-<N> — merge produced no verdict
+
+Review: fail (iteration <N>)
+Merge could not synthesize a verdict from the returned sub-verdicts.
+See ledger for the anomaly entry.
+```
+
+Emit as `overall_status: fail` with the fallback `commit_message` so the
+kernel's hard-commit rule can still execute deterministically.
+
 ## Emit `review_merged`
 
 Write the return signal to `.ai-robin/dispatch/inbox/`.
@@ -68,6 +156,7 @@ Full payload:
     }
   ],
   "summary": "Batch 3 has one blocking issue around uniqueness validation that must be fixed. Other playbooks clean or minor warnings.",
+  "commit_message": "review(failed): batch-3 iteration 1 — uniqueness check missing\n\nReview: fail (iteration 1)\n1 blocking issue: user creation inserts without email uniqueness check.\nbackend-api and db-schema both flagged; replan will follow.\n\nMilestones: m2-api-endpoints, m3-auth-middleware\nPlaybooks run: code-quality, backend-api, db-schema, test-coverage",
   "commit_ready": true
 }
 ```
