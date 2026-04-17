@@ -184,6 +184,13 @@ Kernel performed a git commit (always after review).
 }
 ```
 
+The `commit_message` field is copied verbatim from the source:
+
+- For review commits: `review_merged.payload.commit_message` (produced by Merge Agent's Phase 4)
+- For degradation commits: kernel-composed from the degradation trigger payload using the deterministic pattern `[degradation] <scope>: <short reason>`, where both `<scope>` and `<short reason>` come from the degradation trigger and require no spec reading (preserving kernel context-minimalism).
+
+Kernel does not otherwise synthesize commit messages.
+
 ### `user_message_received`
 User sent a message during execution. Per kernel discipline, this is logged but
 does not divert the workflow (unless it's STOP/PAUSE — see `kernel-discipline.md`).
