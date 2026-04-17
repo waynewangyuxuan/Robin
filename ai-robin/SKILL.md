@@ -102,19 +102,18 @@ determines what you do next.
 | `dispatch_batch` | Read batch spec from signal. Spawn N Execute Agents (parallel or sequential per `concurrency_mode`). |
 | `dispatch_exhausted` | Route to Planning for replan. Consumes `replan_iterations` budget. If already exhausted → trigger degradation for all remaining pending milestones. |
 | `execute_complete` | Mark task complete in `stage-state.current_batch`. Check if batch settled. If not settled → wait. If settled → apply "batch-settled rule" below. |
-| `execute_failed` | Mark task failed in `stage-state.current_batch.failed_tasks`. Check if batch settled. If not settled → wait. If settled → apply "batch-settled rule" below. |
+| `execute_failed` | Mark task failed in `stage-state.current_batch.failed_tasks`. Check if batch settled. If not settled → wait. If settled → apply "batch-settled rule" below (Review-Plan is always spawned, per contract). |
 | `review_dispatch` | Spawn N review sub-agents per the dispatch list. |
 | `review_sub_verdict` | Check if all review sub-agents in this batch are done. If yes → spawn Merge. If no → wait. |
-| `review_merged` | **Always commit to git first using `payload.commit_message`** (see rule below). Then: `pass`/`pass_with_warnings` → Execute-Control for next batch; `fail` + budget left → Planning replan; `fail` + budget exhausted → degrade. |
+| `review_merged` | **Always commit to git first using `payload.commit_message`** (see rule below). Then: `pass`/`pass_with_warnings` → Execute-Control for next batch; `fail` + `review_iterations_per_batch` budget remaining → Planning replan; `fail` + `review_iterations_per_batch` exhausted → degrade. |
 | `stage_exhausted` | Trigger degradation for this scope. Log. Continue other scopes if any. |
 | `all_complete` | Generate delivery bundle. Write `run_end` with `exit_reason: "all_complete"`. Kernel exits. |
 
 ### The batch-settled rule
 
-A batch is "settled" when every task in `stage-state.current_batch.tasks` has returned either `execute_complete` or `execute_failed`. On settlement:
+A batch is "settled" when every task in `stage-state.current_batch.tasks` has returned either `execute_complete` or `execute_failed`. On settlement, **always spawn Review-Plan** with the full batch input (both `execute_complete` and `execute_failed` task artifacts; `failed_tasks[]` listed separately so playbooks know which scopes are partial). Per `contracts/dispatch-signal.md`, review runs even when every task failed — partial artifacts and the failure itself still need verdict logging for audit integrity. Review-Plan may choose to dispatch zero playbooks if there is nothing reviewable, producing a minimal verdict that records the failure.
 
-- **At least one `execute_complete`** → spawn Review-Plan. Input includes `failed_tasks[]` so playbooks can note partial coverage.
-- **All tasks `execute_failed`** → skip review entirely (no change specs exist to review). Route to Planning for replan with `rework_reason.kind: "all_tasks_failed"`. Consumes `replan_iterations` budget.
+Routing after the review settles (via `review_merged`) follows the normal rule below: pass → next batch; fail + budget left → Planning replan; fail + budget exhausted → degrade.
 
 After routing:
 4. Move signal file from `inbox/` to `processed/`

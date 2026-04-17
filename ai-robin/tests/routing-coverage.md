@@ -37,16 +37,13 @@ Expected output of the diff: **empty**. If non-empty, the routing table is incom
 | `execute_failed` | ✅ | Mark task as failed in `stage-state.current_batch.failed_tasks`. Check if batch settled (all tasks complete or failed). If not settled → wait. If settled → see "batch settled" rule below. |
 | `review_dispatch` | ✅ | Spawn N review sub-agents per the dispatch list. |
 | `review_sub_verdict` | ✅ | Check if all review sub-agents in this batch are done. If yes → spawn Merge. If no → wait. |
-| `review_merged` | ✅ | **Always commit to git first using `payload.commit_message`** (hard rule). Then route: `pass`/`pass_with_warnings` → Execute-Control next batch; `fail` + budget remaining → Planning replan; `fail` + budget exhausted → degrade. |
+| `review_merged` | ✅ | **Always commit to git first using `payload.commit_message`** (hard rule). Then route: `pass`/`pass_with_warnings` → Execute-Control next batch; `fail` + `review_iterations_per_batch` remaining → Planning replan; `fail` + `review_iterations_per_batch` exhausted → degrade. |
 | `stage_exhausted` | ✅ | Trigger degradation for this scope. Log. Continue other scopes if any. |
 | `all_complete` | ✅ | Generate delivery bundle. Write `run_end` with `exit_reason: "all_complete"`. Kernel exits. |
 
 ### Batch-settled rule (shared by `execute_complete` and `execute_failed`)
 
-Applies when all tasks in the current batch have returned either `execute_complete` or `execute_failed`:
-
-- **At least one `execute_complete`** → spawn Review-Plan. Input includes `failed_tasks[]` so playbooks can note partial coverage.
-- **All tasks `execute_failed`** → skip review entirely (no change specs exist to review). Route to Planning for replan with `rework_reason.kind: "all_tasks_failed"`. Consumes `replan_iterations` budget.
+Applies when all tasks in the current batch have returned either `execute_complete` or `execute_failed`. On settlement, **always spawn Review-Plan** with the full batch input (both `execute_complete` and `execute_failed` task artifacts; `failed_tasks[]` listed separately so playbooks know which scopes are partial). Per `contracts/dispatch-signal.md`, review runs even when every task failed — partial artifacts and the failure itself still need verdict logging for audit integrity. Review-Plan may dispatch zero playbooks if there is nothing reviewable, producing a minimal verdict that records the failure.
 
 ## Coverage status
 
