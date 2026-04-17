@@ -51,7 +51,7 @@ in the ledger.
         "settled_at": "ISO 8601 | null — timestamp when status became complete or failed"
       }
     ],
-    "failed_tasks": ["string — task_ids that returned execute_failed; subset of tasks[]"],
+    "failed_tasks": ["string — denormalized view of failed tasks in tasks[]; equal to {t.task_id : t.status == 'failed'}; see Invariants"],
     "review_iteration": "integer — 1, 2, or 3 — only meaningful when reviewing this batch",
     "status": "'dispatching' | 'executing' | 'reviewing' | 'committed' | null"
   },
