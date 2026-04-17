@@ -68,6 +68,22 @@ Playbooks run: <playbook_1>, <playbook_2>, ...
 - `<N>`: `batch_id` suffix.
 - Body: mirror `summary` but formatted for git log readability.
 
+**Header exception for failed/anomaly iterations.** When
+`overall_status: fail` or the anomaly-fallback path fires, use this
+alternative header shape instead of the `<type>(<scope>): ... (batch-<N>)`
+template above:
+
+```
+review(failed): batch-<N> iteration <N> — <short description>
+review(anomaly): batch-<N> — <short description>
+```
+
+The `review(failed)` / `review(anomaly)` types encode batch and iteration
+directly in the header, so do NOT append a trailing `(batch-<N>)` suffix
+as well. This keeps failed-attempt commits greppable via
+`git log --grep='^review('` and visually distinct from the normal
+feature-style headers of successful batches.
+
 ### Three concrete examples
 
 **Pass**:
