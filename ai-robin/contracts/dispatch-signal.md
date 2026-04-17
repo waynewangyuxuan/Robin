@@ -360,13 +360,19 @@ Payload:
     }
   ],
   "review_iteration": "integer — 1 or 2 or 3",
-  "commit_ready": "boolean — always true; kernel commits regardless"
+  "commit_ready": "boolean — always true; kernel commits regardless",
+  "summary": "string — one-paragraph narrative of what was reviewed and the outcome; written by Merge Agent's Phase 4",
+  "commit_message": "string — the exact git commit message the kernel uses; Conventional Commits-style header + body; see review/merge/phases/phase-4-emit.md for format"
 }
 ```
 
 Main agent action:
-1. **Commit all artifacts + this verdict to git immediately** (hard rule)
-2. Then route:
+1. **Commit all artifacts + this verdict to git immediately** (hard rule).
+   Use `payload.commit_message` verbatim as the commit message. Kernel does
+   NOT synthesize its own message — Merge Agent is authoritative.
+2. Write a `commit` ledger entry with `content.commit_message` = the exact
+   string used (for audit).
+3. Then route:
    - `pass` or `pass_with_warnings` → signal Execute-Control for next batch
    - `fail` + iteration < budget → signal Planning for replan with issues
    - `fail` + iteration >= budget → trigger degradation
@@ -473,5 +479,41 @@ a clarification note. If second attempt also malformed, degrade that scope.
     "declared_complete": true,
     "notes": null
   }
+}
+```
+
+### Example: `review_merged`
+
+```json
+{
+  "signal_id": "review-merged-batch3-20260416T144530-c4e2",
+  "signal_type": "review_merged",
+  "produced_by": {
+    "agent": "review-merge",
+    "invocation_id": "inv-review-merge-batch-3",
+    "stage": "review",
+    "iteration": 1
+  },
+  "produced_at": "2026-04-16T14:45:30Z",
+  "payload": {
+    "batch_id": "batch-3",
+    "review_iteration": 1,
+    "overall_status": "pass_with_warnings",
+    "consolidated_issues": [
+      {
+        "severity": "quality",
+        "source_playbooks": ["code-quality"],
+        "description": "handleCreate exceeds 80 lines; extractable helper suggested."
+      }
+    ],
+    "summary": "Batch 3 reviewed by 3 playbooks. All passed with one quality warning on function length. Ready for commit.",
+    "commit_message": "feat(api): implement user CRUD endpoints (batch-3)\n\nReview: pass_with_warnings (iteration 1)\n- 1 quality warning on function length, non-blocking\n\nMilestones: m2-api-endpoints, m3-auth-middleware\nPlaybooks run: code-quality, backend-api, test-coverage",
+    "commit_ready": true
+  },
+  "budget_consumed": {"tokens_estimated": 2100, "wall_clock_seconds": 12},
+  "artifacts": [
+    {"kind": "verdict", "path": ".ai-robin/dispatch/inbox/review-merged-batch3-20260416T144530-c4e2.json"}
+  ],
+  "self_check": {"declared_complete": true, "notes": null}
 }
 ```
