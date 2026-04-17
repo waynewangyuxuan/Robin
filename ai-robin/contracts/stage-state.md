@@ -44,6 +44,14 @@ in the ledger.
   "current_batch": {
     "batch_id": "string | null — null if no batch is in flight",
     "milestone_ids": ["string"],
+    "tasks": [
+      {
+        "task_id": "string — matches dispatch_batch payload",
+        "status": "'dispatched' | 'complete' | 'failed'",
+        "settled_at": "ISO 8601 | null — timestamp when status became complete or failed"
+      }
+    ],
+    "failed_tasks": ["string — task_ids that returned execute_failed; subset of tasks[]"],
     "review_iteration": "integer — 1, 2, or 3 — only meaningful when reviewing this batch",
     "status": "'dispatching' | 'executing' | 'reviewing' | 'committed' | null"
   },
@@ -106,6 +114,12 @@ field only tells the kernel "where to look" and "what's done".
   in it)
 - If `current_batch.batch_id` is not null, `current_batch.status` must not be
   null
+- If `current_batch.batch_id` is not null, `current_batch.tasks[]` must contain
+  one entry per task in the latest `dispatch_batch` signal (same task_ids)
+- `current_batch.failed_tasks` ⊆ `{t.task_id for t in current_batch.tasks if t.status == "failed"}`
+- A batch is **settled** iff every entry in `current_batch.tasks[]` has
+  `status != "dispatched"`. The batch-settled rule (see SKILL.md) fires exactly
+  once per batch, at the first turn after settlement
 - `last_ledger_entry_id` must match the actual last entry_id in ledger.jsonl
   (if they diverge, kernel re-reads the ledger's last line to reconcile and
   writes an `anomaly` entry)
@@ -159,6 +173,11 @@ the next invocation reads `stage-state.json` and resumes:
   "current_batch": {
     "batch_id": "batch-3",
     "milestone_ids": ["m2-api-endpoints", "m3-auth-middleware"],
+    "tasks": [
+      {"task_id": "batch-3-task-1", "status": "complete", "settled_at": "2026-04-16T14:42:00Z"},
+      {"task_id": "batch-3-task-2", "status": "complete", "settled_at": "2026-04-16T14:43:00Z"}
+    ],
+    "failed_tasks": [],
     "review_iteration": 2,
     "status": "reviewing"
   },
