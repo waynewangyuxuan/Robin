@@ -1,7 +1,7 @@
 # Review Verdict
 
 The structured output of a review sub-agent (a playbook run) and the merged
-aggregate output of the Merge Agent. Two related but distinct shapes.
+aggregate output of the Merger Agent. Two related but distinct shapes.
 
 ---
 
@@ -88,9 +88,9 @@ Any blocking = `fail`.
 
 ---
 
-## Part 2: Merged Verdict (Merge Agent's output)
+## Part 2: Merged Verdict (Merger Agent's output)
 
-Written by the Merge Agent after all sub-verdicts for a batch are in. Returned
+Written by the Merger Agent after all sub-verdicts for a batch are in. Returned
 to main agent as the payload of a `review_merged` dispatch-signal.
 
 ### Schema
@@ -131,7 +131,7 @@ to main agent as the payload of a `review_merged` dispatch-signal.
 }
 ```
 
-### Merge rules (how Merge Agent produces the above)
+### Merge rules (how Merger Agent produces the above)
 
 1. **Overall status is determined by worst sub-verdict.** Any sub-verdict with
    `fail` → overall `fail`. Any with `pass_with_warnings` (and none fail) →
@@ -140,7 +140,7 @@ to main agent as the payload of a `review_merged` dispatch-signal.
 2. **Consolidation.** If two sub-verdicts flag the same file:line with
    substantively similar issues, merge them. The merged issue cites all source
    playbooks. "Substantively similar" is fuzzy and autonomous — guidance in
-   `agents/review/merge/SKILL.md`.
+   `skills/robin-merger/SKILL.md`.
 
 3. **No upgrading severity during merge.** If one playbook says `quality` and
    another says `advisory` about the same thing, merged severity is `quality`

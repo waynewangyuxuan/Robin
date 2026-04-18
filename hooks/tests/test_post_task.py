@@ -14,7 +14,7 @@ def _valid_signal(signal_type="intake_complete"):
         "signal_id": f"intake-consumer-20260417T100000-abc12345",
         "signal_type": signal_type,
         "produced_by": {
-            "agent": "consumer",
+            "agent": "intake",
             "invocation_id": "inv-consumer-abc123",
             "stage": "intake",
             "iteration": 1,
@@ -44,7 +44,7 @@ def test_post_task_records_signal_received(ai_robin_dir):
         json.dumps(signal)
     )
 
-    payload = {"tool_name": "Task", "tool_input": {"subagent_type": "ai-robin-consumer"}}
+    payload = {"tool_name": "Task", "tool_input": {"subagent_type": "robin-intake"}}
     result = _run(payload, ai_robin_dir.parent)
     assert result.returncode == 0, f"stderr: {result.stderr}"
 
@@ -76,7 +76,7 @@ def test_post_task_logs_anomaly_on_malformed_signal(ai_robin_dir):
     malformed = {"signal_id": "bogus"}  # missing required fields
     (ai_robin_dir / "dispatch" / "inbox" / "bogus.json").write_text(json.dumps(malformed))
 
-    payload = {"tool_name": "Task", "tool_input": {"subagent_type": "ai-robin-consumer"}}
+    payload = {"tool_name": "Task", "tool_input": {"subagent_type": "robin-intake"}}
     result = _run(payload, ai_robin_dir.parent)
     assert result.returncode == 0
 
@@ -86,7 +86,7 @@ def test_post_task_logs_anomaly_on_malformed_signal(ai_robin_dir):
 
 
 def test_post_task_handles_missing_ai_robin_dir(tmp_path):
-    payload = {"tool_name": "Task", "tool_input": {"subagent_type": "ai-robin-consumer"}}
+    payload = {"tool_name": "Task", "tool_input": {"subagent_type": "robin-intake"}}
     result = subprocess.run(
         [PYTHON, str(HOOK_PATH)],
         input=json.dumps(payload),
@@ -100,7 +100,7 @@ def test_post_task_handles_missing_ai_robin_dir(tmp_path):
 def test_post_task_handles_invalid_json_signal_file(ai_robin_dir):
     """Signal file with invalid JSON → anomaly entry."""
     (ai_robin_dir / "dispatch" / "inbox" / "bad.json").write_text("not-json{")
-    payload = {"tool_name": "Task", "tool_input": {"subagent_type": "ai-robin-consumer"}}
+    payload = {"tool_name": "Task", "tool_input": {"subagent_type": "robin-intake"}}
     result = _run(payload, ai_robin_dir.parent)
     assert result.returncode == 0
 

@@ -31,14 +31,14 @@ def main():
 
     stage = s.get("current_stage", "unknown")
     iterations = s.get("stage_iterations", {})
-    # Handle both "execute-control" (hyphen) and "execute_control" (underscore) keys
+    # Handle both "scheduler" (hyphen) and "execute_control" (underscore) keys
     current_iter = iterations.get(stage) or iterations.get(stage.replace("-", "_"), 0)
     active = len(s.get("active_invocations", []))
 
     print(
         f"[AI-Robin resume] stage={stage} iteration={current_iter} "
-        f"active_invocations={active}. Use /ai-robin-resume to continue, "
-        f"/ai-robin-status for details."
+        f"active_invocations={active}. Use /robin-resume to continue, "
+        f"/robin-status for details."
     )
     return 0
 

@@ -1,7 +1,7 @@
 {
-  "name": "ai-robin",
+  "name": "robin",
   "version": "0.2.0",
-  "description": "Autonomous multi-agent software development workflow: Consumer (intake) → Planning → Execute-Control → Execute × N → Review stage. Takes a one-shot human brief and delivers a software project end-to-end as a batch job. Do NOT use for interactive pair-programming.",
+  "description": "Autonomous multi-agent software development workflow: Intake → Planning → Scheduler → Executor × N → Review. Takes a one-shot human brief and delivers a software project end-to-end as a batch job. Do NOT use for interactive pair-programming.",
   "author": "AI-Robin contributors",
   "commands": "./commands",
   "agents": "./agents",

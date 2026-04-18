@@ -50,7 +50,7 @@ then moves to `processed/`.
 ### Stage 0: Intake
 
 #### `intake_complete`
-Consumer Agent successfully produced a planning-ready spec.
+Intake Agent successfully produced a planning-ready spec.
 
 Payload:
 ```json
@@ -67,7 +67,7 @@ Payload:
   "agent_proxy_decisions": [
     {
       "decision_spec_id": "string",
-      "reason": "string — why Consumer had to decide this on behalf of user"
+      "reason": "string — why Intake had to decide this on behalf of user"
     }
   ],
   "unresolved_but_deferred": [
@@ -79,9 +79,9 @@ Payload:
 Main agent action: update stage-state to `planning`, spawn Planning Agent.
 
 #### `intake_blocked`
-Consumer Agent cannot complete intake. This is the only pre-degradation signal
+Intake Agent cannot complete intake. This is the only pre-degradation signal
 that can occur before intake ends. It means: user is unresponsive or input is
-so incomplete that even Consumer's decision-proxy rules can't resolve it.
+so incomplete that even Intake's decision-proxy rules can't resolve it.
 
 Payload:
 ```json
@@ -118,7 +118,7 @@ Payload:
 }
 ```
 
-Main agent action: update stage-state to `execute-control`, spawn Execute-Control.
+Main agent action: update stage-state to `execute-control`, spawn Scheduler.
 
 #### `planning_needs_research`
 Planning is blocked on a question that needs research.
@@ -203,10 +203,10 @@ relevant spec as having low confidence).
 
 ---
 
-### Stage 2: Execute-Control
+### Stage 2: Scheduler
 
 #### `dispatch_batch`
-Execute-Control Agent has decided what to spawn next.
+Scheduler Agent has decided what to spawn next.
 
 Payload:
 ```json
@@ -233,7 +233,7 @@ Main agent action: spawn N Execute Agents per the `tasks` list, respecting
 `concurrency_mode` and `depends_on_tasks`.
 
 #### `dispatch_exhausted`
-Execute-Control cannot form a valid batch — typically because plan is inconsistent
+Scheduler cannot form a valid batch — typically because plan is inconsistent
 or all remaining milestones are blocked.
 
 Payload:
@@ -342,10 +342,10 @@ Payload:
 ```
 
 Main agent action: collect. When all review sub-agents for this batch report in,
-spawn Merge Agent.
+spawn Merger Agent.
 
 #### `review_merged`
-Merge Agent has synthesized all sub-verdicts into one overall decision.
+Merger Agent has synthesized all sub-verdicts into one overall decision.
 
 Payload:
 ```json
@@ -361,8 +361,8 @@ Payload:
   ],
   "review_iteration": "integer — 1 or 2 or 3",
   "commit_ready": "boolean — always true; kernel commits regardless",
-  "summary": "string — one-paragraph narrative of what was reviewed and the outcome; written by Merge Agent's Phase 4",
-  "commit_message": "string — the exact git commit message the kernel uses; Conventional Commits-style header + body; see agents/review/merge/phases/phase-4-emit.md for format"
+  "summary": "string — one-paragraph narrative of what was reviewed and the outcome; written by Merger Agent's Phase 4",
+  "commit_message": "string — the exact git commit message the kernel uses; Conventional Commits-style header + body; see skills/robin-merger/phases/phase-4-emit.md for format"
 }
 ```
 
@@ -372,7 +372,7 @@ Main agent action:
    artifacts + the verdict record). Do NOT commit directly — Commit Agent does
    that. Wait for `commit_complete`.
 2. After `commit_complete` returns: route based on `overall_status`:
-   - `pass` or `pass_with_warnings` → signal Execute-Control for next batch
+   - `pass` or `pass_with_warnings` → signal Scheduler for next batch
    - `fail` + iteration < budget → signal Planning for replan with issues
    - `fail` + iteration >= budget → spawn Degradation Agent
 
@@ -397,10 +397,10 @@ Payload:
 Main agent action: append `commit` ledger entry using the fields in this payload.
 Then route per the trigger:
 - If `trigger_signal_type == 'review_merged'`: continue the `review_merged`
-  routing (next stage per the original verdict — Execute-Control on pass,
+  routing (next stage per the original verdict — Scheduler on pass,
   Planning on fail-with-budget, Degradation Agent on fail-without-budget).
 - If `trigger_signal_type == 'degradation_spec_written'`: continue the dispatch
-  loop (typically back to Execute-Control to attempt next batch).
+  loop (typically back to Scheduler to attempt next batch).
 - If `success == false`: log `anomaly` entry severity high; continue with the
   routing path as if the commit had happened (commit failure is recorded but
   does not halt the run — kernel never retries commits).
@@ -410,7 +410,7 @@ Then route per the trigger:
 ### Completion / termination signals
 
 #### `all_complete`
-Execute-Control or main agent itself determines all plan milestones have been
+Scheduler or main agent itself determines all plan milestones have been
 addressed (passed review, degraded, or explicitly skipped).
 
 Payload:
@@ -468,7 +468,7 @@ Payload:
 Main agent action: spawn Commit Agent with
 `trigger_signal_type: 'degradation_spec_written'`, passing the `commit_message`
 and `files_to_commit` verbatim. Wait for `commit_complete`. Then continue the
-dispatch loop (typically back to Execute-Control for the next batch).
+dispatch loop (typically back to Scheduler for the next batch).
 
 #### `stage_exhausted`
 Generic signal for "this scope's budget ran out and I couldn't do it". Any stage
@@ -494,7 +494,7 @@ scopes. Only if ALL remaining scopes are exhausted does the whole run end.
 - `signal_id` must be unique within a run. Uniqueness is enforced by the
   producing sub-agent via the `{stage}-{agent}-{timestamp}-{shortuuid}` format.
 - `signal_id` is the sort key the kernel uses to order multiple pending
-  signals; see `agents/kernel/discipline.md` § "Signal ordering when inbox
+  signals; see `skills/robin-kernel/discipline.md` § "Signal ordering when inbox
   has multiple files".
 - `signal_type` must be one of the enumerated values in this document
 - `produced_by.invocation_id` must match an invocation main agent actually
@@ -506,7 +506,7 @@ scopes. Only if ALL remaining scopes are exhausted does the whole run end.
 
 ## When main agent receives a malformed signal
 
-See `agents/kernel/discipline.md` § "Malformed signal protocol". Summary: log to
+See `skills/robin-kernel/discipline.md` § "Malformed signal protocol". Summary: log to
 ledger as anomaly, do not route, consider re-spawning the sub-agent once with
 a clarification note. If second attempt also malformed, degrade that scope.
 

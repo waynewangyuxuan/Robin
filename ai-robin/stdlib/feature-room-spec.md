@@ -4,7 +4,7 @@ AI-Robin's data persistence reuses the Feature Room specification format. This
 module defines the format as it applies to AI-Robin. For the original
 Feature Room system this was extracted from, see `docs/feature-room-mapping.md`.
 
-Used by: all sub-agents that produce specs (Consumer, Planning, Research,
+Used by: all sub-agents that produce specs (Intake, Planning, Research,
 Execute, Review sub-agents). Main agent does not produce specs; it only
 coordinates agents that do.
 
@@ -34,7 +34,7 @@ parts of those skills' methodology in AI-Robin's own style (see
 
 AI-Robin expects the project under development to have a Feature Room
 structure at `{project_root}/META/` (or similar conventional location). If
-the project doesn't have this, Consumer Agent creates it during intake.
+the project doesn't have this, Intake Agent creates it during intake.
 
 ```
 META/
@@ -63,7 +63,7 @@ Additionally, AI-Robin uses a dedicated Room for planning artifacts:
 
 ```
 META/
-└── 00-ai-robin-plan/                # Planning Agent's workspace
+└── 00-robin-plan/                # Planning Agent's workspace
     ├── room.yaml
     ├── progress.yaml
     └── specs/
@@ -80,12 +80,12 @@ Every spec has a `type` from this enumeration:
 
 | Type | Semantic | Who produces (in AI-Robin) |
 |---|---|---|
-| `intent` | "Why are we doing this" / functional goal | Consumer Agent (extracts from user input); Planning may refine |
-| `decision` | "We chose A over B because ..." | Planning Agent (technical decisions); Consumer (occasionally, for proxy decisions) |
-| `constraint` | "Must / must not / upper bound / lower bound" | Consumer (from user requirements); Planning (derived from architecture) |
+| `intent` | "Why are we doing this" / functional goal | Intake Agent (extracts from user input); Planning may refine |
+| `decision` | "We chose A over B because ..." | Planning Agent (technical decisions); Intake (occasionally, for proxy decisions) |
+| `constraint` | "Must / must not / upper bound / lower bound" | Intake (from user requirements); Planning (derived from architecture) |
 | `contract` | "Interface between components" | Planning Agent (primary producer; most important spec for AI-Robin) |
-| `convention` | "Team/project-wide rules" | Consumer (if user specifies); Planning (if derived) |
-| `context` | "Background information" | Consumer; Research Agent; Planning (as context-degraded) |
+| `convention` | "Team/project-wide rules" | Intake (if user specifies); Planning (if derived) |
+| `context` | "Background information" | Intake; Research Agent; Planning (as context-degraded) |
 | `change` | "A specific change record" | Execute Agent (one per execute completion); Main agent (for degradation commits) |
 
 ---
@@ -105,8 +105,8 @@ State meanings:
 - `draft`: Just created, not yet validated. In original Feature Room, drafts
   await human review. **In AI-Robin, drafts are auto-promoted to active by
   the producing agent when its self-check passes.** This is the key adaptation
-  to "no human in the loop after intake". Consumer is the only agent that
-  can leave specs in draft state for human review (because Consumer is the
+  to "no human in the loop after intake". Intake is the only agent that
+  can leave specs in draft state for human review (because Intake is the
   stage where human IS in the loop).
 - `active`: Current, authoritative, used by prompt-gen equivalents.
 - `stale`: Linked code has changed in a way that may have invalidated the
@@ -181,7 +181,7 @@ anchors:
 ## `agent_proxy` source_type (AI-Robin specific)
 
 Original Feature Room does not have `agent_proxy` as a source type. AI-Robin
-adds this for a specific case: **Consumer Agent had to make a decision on
+adds this for a specific case: **Intake Agent had to make a decision on
 behalf of the user because the user's input did not cover it and the gap
 couldn't be filled with a reasonable default**.
 

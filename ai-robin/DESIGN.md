@@ -27,15 +27,15 @@ AI-Robin 不是一个 helper、不是一个 copilot。它是一个 **batch job**
 
 ### 约束 1: 只有一次 human 交互
 
-整个 project 的 lifecycle 里，human 只在 **Consumer Agent** 这一个 stage 里出现。
-Consumer Agent 结束后，human 就走了，直到最终 verify 项目产出。
+整个 project 的 lifecycle 里，human 只在 **Intake Agent** 这一个 stage 里出现。
+Intake Agent 结束后，human 就走了，直到最终 verify 项目产出。
 
 这个约束的含义：
-- **Consumer Agent 是生死线**。所有可能的决策点、所有可能的 gap、所有模糊性，必须在
-  Consumer 阶段被识别、被问清楚、或被 Consumer Agent 代为钉死。
+- **Intake Agent 是生死线**。所有可能的决策点、所有可能的 gap、所有模糊性，必须在
+  Intake 阶段被识别、被问清楚、或被 Intake Agent 代为钉死。
 - **后续 agent 没有"停下来问"的 affordance**。它们只有三个出路：自己做决策 / 回到
   前面的 stage re-plan / 触发 graceful degradation（把这部分标为未完成，继续别的）。
-- **Planning/Execute/Review 都是自主的**。它们依赖的所有信息必须已经在 Consumer 阶段
+- **Planning/Execute/Review 都是自主的**。它们依赖的所有信息必须已经在 Intake 阶段
   固化到 spec 里。
 
 ### 约束 2: Main agent 是 kernel，永远 light
@@ -105,7 +105,7 @@ sub-skill。Runtime 不动态加载外部 skill。
         ┌────────┬───────────┼───────────────┬─────────────┐
         │        │           │               │             │
         ▼        ▼           ▼               ▼             ▼
-   Consumer  Planning   Execute-Control  Execute Agents  Review Stage
+   Intake  Planning   Scheduler  Execute Agents  Review Stage
    (一次)     (可多次)    (每个 stage)    (N 个并行)      (plan + fan-out)
                 │
                 ├──► Research (辅助 sub-agent)
@@ -119,9 +119,9 @@ sub-skill。Runtime 不动态加载外部 skill。
 [Stage 0: Intake]
   User 扔 raw input
     ↓
-  Main agent spawn Consumer Agent
+  Main agent spawn Intake Agent
     ↓
-  Consumer Agent:
+  Intake Agent:
     - 主动穷举决策点
     - 识别 gap、问 user、钉死 decisions
     - 写 spec 到 Room 结构
@@ -141,15 +141,15 @@ sub-skill。Runtime 不动态加载外部 skill。
     - 定义 milestones
     ↓
   return 可能是:
-    - "planning_complete" → 进入 Execute-Control
+    - "planning_complete" → 进入 Scheduler
     - "need_research" → main agent spawn Research Agent
     - "need_sub_planning" → main agent spawn sub-planning for specific part
     - "replan_budget_exhausted" → graceful degradation
 
-[Stage 2: Execute-Control]
-  Main agent spawn Execute-Control Agent
+[Stage 2: Scheduler]
+  Main agent spawn Scheduler Agent
     ↓
-  Execute-Control Agent:
+  Scheduler Agent:
     - 读 plan + 当前 progress
     - 决定这一批要 spawn 几个 Execute Agent、各自 scope
     - 判断并发度（按 depends_on 和 contract 约束）
@@ -157,7 +157,7 @@ sub-skill。Runtime 不动态加载外部 skill。
   return: "dispatch_batch" + [task specs for N execute agents]
 
 [Stage 3: Execute]
-  Main agent spawn N × Execute Agent (并行或串行，按 Execute-Control 指令)
+  Main agent spawn N × Execute Agent (并行或串行，按 Scheduler 指令)
     ↓
   每个 Execute Agent:
     - 拉自己 scope 内的 context
@@ -309,8 +309,8 @@ verification 的成本从 O(deliverable 大小) 降到 O(决策数量)。
 | Review on same content | 2 次 | 第 3 次 fail → degrade to known issue |
 | Re-plan on same stage | 3 次 | 第 4 次 → degrade to known issue |
 | Research depth | 2 层（research 可以触发 sub-research） | 第 3 层 → 用已有信息做决策 |
-| Total wall-clock | 由 Consumer 阶段确定 | 超时 → 暂停，等 human |
-| Total token budget | 由 Consumer 阶段确定 | 超时 → 暂停，等 human |
+| Total wall-clock | 由 Intake 阶段确定 | 超时 → 暂停，等 human |
+| Total token budget | 由 Intake 阶段确定 | 超时 → 暂停，等 human |
 
 Budget 不是软约束，是硬 kill switch。任何 agent 在 return 前要 check budget。
 
@@ -350,13 +350,13 @@ Spawn Review-Plan Agent
   ↓
 Main agent 并行 spawn 4 × Review Sub-Agent
   每个 sub-agent 独立:
-    - load 自己的 playbook (agents/review/playbooks/{name}/SKILL.md)
+    - load 自己的 playbook (skills/ (robin-reviewer-* dirs){name}/SKILL.md)
     - load change 相关的代码和 spec
     - 运行 playbook 的 checklist
     - 产出 verdict: { status: pass/fail, issues: [...], severity: ... }
   ↓
 所有 sub-agent 结束，main agent spawn Merge
-  Merge Agent:
+  Merger Agent:
     - 合并所有 verdict
     - any critical fail → overall fail
     - only minor warnings → overall pass with warnings
@@ -369,7 +369,7 @@ Main agent 并行 spawn 4 × Review Sub-Agent
   session ledger append entry
   ↓
 根据 verdict 决定下一步:
-  pass → return "ready_for_next_batch" to Execute-Control
+  pass → return "ready_for_next_batch" to Scheduler
   fail + within iteration budget → return "needs_rework" + issues → Planning
   fail + budget exhausted → return "degraded" + reason → continue with known issue
 ```
@@ -383,7 +383,7 @@ Main agent 并行 spawn 4 × Review Sub-Agent
 ### 阶段 A: 骨架（最先写）
 1. `SKILL.md`（main dispatch）
 2. `contracts/` 下所有 contract 定义
-3. `agents/kernel/discipline.md`
+3. `skills/robin-kernel/discipline.md`
 4. `stdlib/feature-room-spec.md`
 5. `stdlib/iteration-budgets.md`
 6. `stdlib/degradation-policy.md`
@@ -392,13 +392,13 @@ Main agent 并行 spawn 4 × Review Sub-Agent
 7. 每个 stage 目录下的 `SKILL.md` 骨架，定义 return signal 和核心流程
 
 ### 阶段 C: 每个 agent 的 stdlib depth
-8. Consumer 的 decision-taxonomy / question-prioritization / completeness-check
+8. Intake 的 decision-taxonomy / question-prioritization / completeness-check
 9. Planning 的 contract-design / parallelism-identification / replan-protocol
 10. Execute 的 context-pulling（从 prompt-gen 抽取）/ commit-preparation（从
     commit-sync 抽取）
 
 ### 阶段 D: Review playbooks（渐进）
-11. `agents/review/playbooks/code-quality/SKILL.md`（总是 spawn，必须先有）
+11. `skills/robin-reviewer-code-quality/SKILL.md`（总是 spawn，必须先有）
 12. 其他 playbook 按需添加——每接触一个新领域加一个
 
 每个阶段跑完，可以 **dog-food** 在一个真实 mini project 上，发现问题、补 gap。
@@ -409,11 +409,11 @@ Main agent 并行 spawn 4 × Review Sub-Agent
 
 这些问题在开发过程中会被逐步收紧：
 
-1. **Consumer Agent 的交互预算到底是多少？** 3 轮 Q&A？10 个问题？需要实测。
+1. **Intake Agent 的交互预算到底是多少？** 3 轮 Q&A？10 个问题？需要实测。
 2. **Research Agent 的输出格式**——是 structured findings（JSON），还是 markdown？
    倾向 markdown + 一个 summary spec。
 3. **Execute Agent 内部是不是也用 tree 递归？** 比如一个大 task 可以 decompose 成
-   多个 sub-task？目前设计是不递归，由 Execute-Control 统一切分。
+   多个 sub-task？目前设计是不递归，由 Scheduler 统一切分。
 4. **Review playbook 怎么判断触发条件**——按文件扩展名？按 anchor 内容？需要一个
    明确的 trigger matcher 规范。
 5. **跨项目的 learning**——不同项目之间有没有经验复用？目前不做，每个项目独立。
@@ -435,7 +435,7 @@ via inbox" concretely means depends on the runtime.
   1. Read `stage-state.json`.
   2. Check inbox for new signal files.
   3. Process **one** signal (lexicographic order; see
-     `agents/kernel/discipline.md`).
+     `skills/robin-kernel/discipline.md`).
   4. Move signal file to `processed/`, append ledger, update state.
 - Parallel sub-agents means: N sub-agents each write one signal file; main
   agent processes them across N turns, one signal at a time.
@@ -480,7 +480,7 @@ Task return value" alone — the signal file is the source of truth for audit.
 - Main agent never reads sub-agent tool-return values as the authoritative
   source of signal content — only the inbox file.
 - Main agent processes one signal per routing action (see
-  `agents/kernel/discipline.md` § 3), regardless of how many are present.
+  `skills/robin-kernel/discipline.md` § 3), regardless of how many are present.
 
 If a runtime cannot satisfy these invariants (e.g., has no filesystem),
 an adapter layer is required. AI-Robin does not ship such adapters — they
@@ -488,7 +488,7 @@ are out of scope for the v1 NLP.
 
 ### Sub-skill invocation and activation
 
-AI-Robin's sub-skills (`agents/consumer/SKILL.md`, `agents/planning/SKILL.md`, etc.)
+AI-Robin's sub-skills (`skills/robin-intake/SKILL.md`, `skills/robin-planner/SKILL.md`, etc.)
 must **not** be registered as top-level user-invocable skills. Only the
 root `ai-robin/SKILL.md` has YAML frontmatter; all sub-skill files omit
 it so the main agent can load them via the `Read` tool without the
@@ -505,8 +505,8 @@ the abstract design.
 
 ## 9. 一句话总结
 
-> **AI-Robin 是一个 NLP runtime: Consumer Agent 是唯一的 human interface;
-> Main agent 是永远 light 的 kernel; Planning/Execute-Control/Execute/Review
+> **AI-Robin 是一个 NLP runtime: Intake Agent 是唯一的 human interface;
+> Main agent 是永远 light 的 kernel; Planning/Scheduler/Execute/Review
 > 是按 stage 串起来的 stateless sub-agents; Session ledger 是 append-only 的
 > audit log; Review 是按 change 性质动态 fan-out 的 domain-specific checks;
 > 所有 state 以 Feature Room 格式写到 disk; Graceful degradation 替代 human

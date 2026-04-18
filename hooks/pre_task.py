@@ -2,13 +2,13 @@
 """PreToolUse hook for Task tool.
 
 Fires before Claude Code invokes the Task tool. Appends a `dispatch` ledger
-entry (per ai-robin/agents/kernel/discipline.md §4 step 5).
+entry (per skills/robin-kernel/discipline.md §4 step 5).
 
 Input: JSON on stdin per Claude Code hook contract:
   {
     "tool_name": "Task",
     "tool_input": {
-      "subagent_type": "ai-robin-<agent>",
+      "subagent_type": "robin-<agent>",
       "prompt": "..."
     },
     "cwd": "..."
@@ -32,19 +32,22 @@ from lib import ledger
 
 
 def _infer_stage(sub_agent):
+    """Map a robin-<short> agent name (short form, no 'robin-' prefix)
+    to the AI-Robin stage it participates in.
+    """
     mapping = {
-        "consumer": "intake",
-        "planning": "planning",
-        "execute-control": "execute-control",
-        "execute": "execute",
-        "research": "planning",
-        "review-plan": "review",
-        "merge": "review",
-        "commit": "review",
-        "degradation": "review",
-        "finalization": "done",
+        "intake": "intake",
+        "planner": "planning",
+        "scheduler": "execute-control",
+        "executor": "execute",
+        "researcher": "planning",
+        "review-planner": "review",
+        "merger": "review",
+        "committer": "review",
+        "degrader": "review",
+        "finalizer": "done",
     }
-    if sub_agent.startswith("playbook-"):
+    if sub_agent.startswith("reviewer-"):
         return "review"
     return mapping.get(sub_agent, "unknown")
 
@@ -61,7 +64,7 @@ def main():
     tool_input = payload.get("tool_input", {})
     subagent_type = tool_input.get("subagent_type", "")
 
-    if not subagent_type.startswith("ai-robin-"):
+    if not subagent_type.startswith("robin-"):
         return 0
 
     cwd = os.environ.get("CLAUDE_PROJECT_DIR") or payload.get("cwd") or os.getcwd()
@@ -69,7 +72,7 @@ def main():
     if not ai_robin_dir.exists():
         return 0
 
-    sub_agent_short = subagent_type.replace("ai-robin-", "")
+    sub_agent_short = subagent_type.replace("robin-", "")
     invocation_id = f"inv-{sub_agent_short}-{uuid4().hex[:8]}"
 
     entry = {
@@ -79,7 +82,7 @@ def main():
         "content": {
             "sub_agent": sub_agent_short,
             "invocation_id": invocation_id,
-            "skill_path": f"ai-robin/agents/{sub_agent_short}/SKILL.md",
+            "skill_path": f"skills/robin-{sub_agent_short}/SKILL.md",
             "context_refs": [],
             "purpose": tool_input.get("prompt", "")[:200],
         },

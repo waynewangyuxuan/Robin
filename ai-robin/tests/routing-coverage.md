@@ -30,10 +30,10 @@ Expected output of the diff: **empty**. If non-empty, the routing table is incom
 |---|---|---|
 | `intake_complete` | ✅ | Update stage-state → "planning". Spawn Planning Agent. |
 | `intake_blocked` | ✅ | **Exit run.** Write `run_end` ledger entry with `exit_reason: "intake_blocked"`. Surface `partial_spec_path` and `reason` to user. Do NOT spawn anything further. |
-| `planning_complete` | ✅ | Update stage-state → "execute-control". Spawn Execute-Control Agent. |
+| `planning_complete` | ✅ | Update stage-state → "scheduler". Spawn Scheduler Agent. |
 | `planning_needs_research` | ✅ | Spawn Research Agent with the question from signal. Keep stage at "planning". |
 | `planning_needs_sub_planning` | ✅ | Spawn sub-Planning Agent for the specified sub-scope. Keep stage at "planning". |
-| `planning_replan_exhausted` | ✅ | Trigger degradation for the `unresolvable_issues` list. Preserve `partial_plan_ref`. Continue other scopes via Execute-Control. |
+| `planning_replan_exhausted` | ✅ | Trigger degradation for the `unresolvable_issues` list. Preserve `partial_plan_ref`. Continue other scopes via Scheduler. |
 | `research_complete` | ✅ | Re-spawn Planning Agent with research findings attached. |
 | `research_inconclusive` | ✅ | Log `anomaly` entry (severity: low). Re-spawn the requesting stage (usually Planning) with `best_guess` attached AND `confidence < 0.5` flag so the requester records any derived decision with low confidence. Does NOT consume degradation budget by itself. |
 | `dispatch_batch` | ✅ | Read batch spec from signal. Spawn N Execute Agents (parallel or sequential per `concurrency_mode`). |
@@ -42,7 +42,7 @@ Expected output of the diff: **empty**. If non-empty, the routing table is incom
 | `execute_failed` | ✅ | Mark task as failed in `stage-state.current_batch.failed_tasks`. Check if batch settled (all tasks complete or failed). If not settled → wait. If settled → see "batch settled" rule below. |
 | `review_dispatch` | ✅ | Spawn N review sub-agents per the dispatch list. |
 | `review_sub_verdict` | ✅ | Check if all review sub-agents in this batch are done. If yes → spawn Merge. If no → wait. |
-| `review_merged` | ✅ | **Spawn Commit Agent** with `trigger_signal_type: 'review_merged'`, passing `payload.commit_message` verbatim and files to stage. Wait for `commit_complete`. Then route per `overall_status`: pass/pass_with_warnings → Execute-Control next batch; fail + `review_iterations_per_batch` remaining → Planning replan; fail + exhausted → spawn Degradation Agent. |
+| `review_merged` | ✅ | **Spawn Commit Agent** with `trigger_signal_type: 'review_merged'`, passing `payload.commit_message` verbatim and files to stage. Wait for `commit_complete`. Then route per `overall_status`: pass/pass_with_warnings → Scheduler next batch; fail + `review_iterations_per_batch` remaining → Planning replan; fail + exhausted → spawn Degradation Agent. |
 | `stage_exhausted` | ✅ | Trigger degradation for this scope. Log. Continue other scopes if any. |
 | `all_complete` | ✅ | **Spawn Finalization Agent** with plan summary. Wait for `delivery_bundle_ready`. Then write `run_end` ledger entry and exit. |
 | `commit_complete` | ✅ | Append `commit` ledger entry from payload. Route per `trigger_signal_type`: review_merged → continue review routing; degradation_spec_written → continue dispatch loop. On `success: false`, log anomaly severity high but continue routing. |

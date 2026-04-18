@@ -36,7 +36,7 @@ def test_append_subsequent_entry_increments_id(ai_robin_dir):
             "entry_type": "dispatch",
             "stage": "intake",
             "iteration": 1,
-            "content": {"sub_agent": "consumer"},
+            "content": {"sub_agent": "intake"},
             "refs": {},
         }
         result = ledger.append(ai_robin_dir, entry)

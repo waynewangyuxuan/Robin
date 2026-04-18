@@ -31,7 +31,7 @@ def test_add_active_invocation_appends(ai_robin_dir):
         ai_robin_dir,
         {
             "invocation_id": "inv-1",
-            "sub_agent": "consumer",
+            "sub_agent": "intake",
             "stage": "intake",
             "spawned_at": "2026-04-17T10:00:00Z",
             "expected_return_signal_types": ["intake_complete"],
@@ -47,7 +47,7 @@ def test_remove_active_invocation_by_id(ai_robin_dir):
         ai_robin_dir,
         {
             "invocation_id": "inv-1",
-            "sub_agent": "consumer",
+            "sub_agent": "intake",
             "stage": "intake",
             "spawned_at": "2026-04-17T10:00:00Z",
             "expected_return_signal_types": ["intake_complete"],
@@ -61,7 +61,7 @@ def test_remove_active_invocation_by_id(ai_robin_dir):
 def test_duplicate_active_invocation_raises(ai_robin_dir):
     inv = {
         "invocation_id": "inv-1",
-        "sub_agent": "consumer",
+        "sub_agent": "intake",
         "stage": "intake",
         "spawned_at": "2026-04-17T10:00:00Z",
         "expected_return_signal_types": ["intake_complete"],

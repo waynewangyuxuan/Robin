@@ -24,7 +24,7 @@ def test_pre_task_appends_dispatch_entry(ai_robin_dir):
     payload = {
         "tool_name": "Task",
         "tool_input": {
-            "subagent_type": "ai-robin-consumer",
+            "subagent_type": "robin-intake",
             "prompt": "user_raw_input: 'build a hello CLI'",
         },
         "cwd": str(ai_robin_dir.parent),
@@ -36,7 +36,7 @@ def test_pre_task_appends_dispatch_entry(ai_robin_dir):
     assert len(lines) == 1
     entry = json.loads(lines[0])
     assert entry["entry_type"] == "dispatch"
-    assert entry["content"]["sub_agent"] == "consumer"
+    assert entry["content"]["sub_agent"] == "intake"
 
 
 def test_pre_task_ignores_non_task_tools(ai_robin_dir):
@@ -62,7 +62,7 @@ def test_pre_task_handles_missing_ai_robin_dir(tmp_path):
     """If there's no .ai-robin/ in cwd, hook exits silently with 0."""
     payload = {
         "tool_name": "Task",
-        "tool_input": {"subagent_type": "ai-robin-consumer", "prompt": "x"},
+        "tool_input": {"subagent_type": "robin-intake", "prompt": "x"},
     }
     result = subprocess.run(
         [PYTHON, str(HOOK_PATH)],

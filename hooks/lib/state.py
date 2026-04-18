@@ -11,7 +11,7 @@ import json
 from pathlib import Path
 
 
-VALID_STAGES = ("intake", "planning", "execute-control", "execute", "review", "done")
+VALID_STAGES = ("intake", "planning", "scheduler", "execute", "review", "done")
 
 
 def read(ai_robin_dir):

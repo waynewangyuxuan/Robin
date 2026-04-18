@@ -4,7 +4,7 @@
 
 **Goal:** Close the 5 P0 correctness gaps that prevent the ai-robin skill from completing a real end-to-end run: missing routing entries for 5 signal types, broken commit-message information pipeline, runtime-model mismatch with Claude Code, ambiguous sub-skill activation, and non-deterministic signal ordering.
 
-**Architecture:** Pure documentation / contract edits to the ai-robin skill at `/Users/waynewang/AI-Robin-Skill/ai-robin/`. No new executable code. Changes split across three layers: (1) main SKILL.md routing table, (2) dispatch-signal contract + Merge Agent output, (3) runtime-positioning + skill-activation semantics. Each task is verified by a grep / Read check that the edit actually landed and is consistent with the other specs it touches.
+**Architecture:** Pure documentation / contract edits to the ai-robin skill at `/Users/waynewang/AI-Robin-Skill/ai-robin/`. No new executable code. Changes split across three layers: (1) main SKILL.md routing table, (2) dispatch-signal contract + Merger Agent output, (3) runtime-positioning + skill-activation semantics. Each task is verified by a grep / Read check that the edit actually landed and is consistent with the other specs it touches.
 
 **Tech Stack:** Markdown files, YAML frontmatter, JSON schema (all authored — no runtime). Verification via Grep tool + Read tool against file contents. Commit via git.
 
@@ -19,7 +19,7 @@ Files modified by this plan (with responsibility of each change):
 - **`ai-robin/contracts/stage-state.md`** — Add `failed_tasks[]` field to `current_batch` (needed to track partial-failure state for `execute_failed` routing).
 - **`ai-robin/contracts/session-ledger.md`** — Update `commit` entry note to clarify `commit_message` comes from `review_merged` signal (not kernel-composed).
 - **`ai-robin/stdlib/kernel-discipline.md`** — Add signal-ordering rule to section "One routing per turn". Add pointer to runtime-adaptation section.
-- **`ai-robin/review/merge/phases/phase-4-emit.md`** — Tell Merge Agent to compose and emit `commit_message`. Add method guidance.
+- **`ai-robin/review/merge/phases/phase-4-emit.md`** — Tell Merger Agent to compose and emit `commit_message`. Add method guidance.
 - **`ai-robin/consumer/SKILL.md`**, **`ai-robin/planning/SKILL.md`**, **`ai-robin/execute-control/SKILL.md`**, **`ai-robin/execute/SKILL.md`**, **`ai-robin/research/SKILL.md`**, **`ai-robin/review/SKILL.md`**, **`ai-robin/review/review-plan/SKILL.md`**, **`ai-robin/review/merge/SKILL.md`** — Strip activation frontmatter (`---` + `name:` + `description:` block) to prevent these sub-skills from being discovered as top-level user-invocable skills. Replace with a plain markdown "Internal sub-skill — not user-invocable" note.
 - **`ai-robin/DESIGN.md`** — Add "Runtime adaptation" section explaining that the `.ai-robin/dispatch/inbox/` pattern is a formal abstraction; runtime implementations may satisfy it differently (e.g., in Claude Code the sub-agent writes the file and the same turn's caller reads it).
 - **`ai-robin/tests/routing-coverage.md`** (NEW) — A verification artifact that lists every signal type defined by the contract and its expected routing. Used as a grep-able audit trail that the main SKILL.md routing table is complete.
@@ -72,10 +72,10 @@ Expected output of the diff: **empty**. If non-empty, the routing table is incom
 |---|---|---|
 | `intake_complete` | ✅ | Update stage-state → "planning". Spawn Planning Agent. |
 | `intake_blocked` | ✅ | **Exit run.** Write `run_end` ledger entry with `exit_reason: "intake_blocked"`. Surface `partial_spec_path` and `reason` to user. Do NOT spawn anything further. |
-| `planning_complete` | ✅ | Update stage-state → "execute-control". Spawn Execute-Control Agent. |
+| `planning_complete` | ✅ | Update stage-state → "scheduler". Spawn Scheduler Agent. |
 | `planning_needs_research` | ✅ | Spawn Research Agent with the question from signal. Keep stage at "planning". |
 | `planning_needs_sub_planning` | ✅ | Spawn sub-Planning Agent for the specified sub-scope. Keep stage at "planning". |
-| `planning_replan_exhausted` | ✅ | Trigger degradation for the `unresolvable_issues` list. Preserve `partial_plan_ref`. Continue other scopes via Execute-Control. |
+| `planning_replan_exhausted` | ✅ | Trigger degradation for the `unresolvable_issues` list. Preserve `partial_plan_ref`. Continue other scopes via Scheduler. |
 | `research_complete` | ✅ | Re-spawn Planning Agent with research findings attached. |
 | `research_inconclusive` | ✅ | Log `anomaly` entry (severity: low). Re-spawn the requesting stage (usually Planning) with `best_guess` attached AND `confidence < 0.5` flag so the requester records any derived decision with low confidence. Does NOT consume degradation budget by itself. |
 | `dispatch_batch` | ✅ | Read batch spec from signal. Spawn N Execute Agents (parallel or sequential per `concurrency_mode`). |
@@ -84,7 +84,7 @@ Expected output of the diff: **empty**. If non-empty, the routing table is incom
 | `execute_failed` | ✅ | Mark task as failed in `stage-state.current_batch.failed_tasks`. Check if batch settled (all tasks complete or failed). If not settled → wait. If settled → see "batch settled" rule below. |
 | `review_dispatch` | ✅ | Spawn N review sub-agents per the dispatch list. |
 | `review_sub_verdict` | ✅ | Check if all review sub-agents in this batch are done. If yes → spawn Merge. If no → wait. |
-| `review_merged` | ✅ | **Always commit to git first using `payload.commit_message`** (hard rule). Then route: `pass`/`pass_with_warnings` → Execute-Control next batch; `fail` + budget remaining → Planning replan; `fail` + budget exhausted → degrade. |
+| `review_merged` | ✅ | **Always commit to git first using `payload.commit_message`** (hard rule). Then route: `pass`/`pass_with_warnings` → Scheduler next batch; `fail` + budget remaining → Planning replan; `fail` + budget exhausted → degrade. |
 | `stage_exhausted` | ✅ | Trigger degradation for this scope. Log. Continue other scopes if any. |
 | `all_complete` | ✅ | Generate delivery bundle. Write `run_end` with `exit_reason: "all_complete"`. Kernel exits. |
 
@@ -151,7 +151,7 @@ In `/Users/waynewang/AI-Robin-Skill/ai-robin/SKILL.md`, replace the exact block 
 | Signal type | Next action |
 |---|---|
 | `intake_complete` | Update stage-state → "planning". Spawn Planning Agent. |
-| `planning_complete` | Update stage-state → "execute-control". Spawn Execute-Control Agent. |
+| `planning_complete` | Update stage-state → "scheduler". Spawn Scheduler Agent. |
 | `planning_needs_research` | Spawn Research Agent (with question from signal). Keep stage at "planning". |
 | `planning_needs_sub_planning` | Spawn sub-Planning Agent for the specified sub-scope. Keep stage at "planning". |
 | `research_complete` | Re-spawn Planning Agent with research findings attached. |
@@ -159,7 +159,7 @@ In `/Users/waynewang/AI-Robin-Skill/ai-robin/SKILL.md`, replace the exact block 
 | `execute_complete` | Check if all execute agents in this batch are done. If yes → spawn Review-Plan. If no → wait. |
 | `review_dispatch` | Spawn N review sub-agents per the dispatch list. |
 | `review_sub_verdict` | Check if all review sub-agents in this batch are done. If yes → spawn Merge. If no → wait. |
-| `review_merged` | **Always commit verdict to git first** (see rule below). Then: if pass → back to Execute-Control for next batch. If fail + budget left → back to Planning with issues. If fail + no budget → degrade. |
+| `review_merged` | **Always commit verdict to git first** (see rule below). Then: if pass → back to Scheduler for next batch. If fail + budget left → back to Planning with issues. If fail + no budget → degrade. |
 | `stage_exhausted` | Trigger degradation for this scope. Log. Continue other scopes if any. |
 | `all_complete` | Generate delivery bundle. Kernel exits. |
 ```
@@ -171,10 +171,10 @@ With this exact block (17 rows, organized by stage, plus the batch-settled rule 
 |---|---|
 | `intake_complete` | Update stage-state → "planning". Spawn Planning Agent. |
 | `intake_blocked` | **Exit run.** Write `run_end` ledger entry with `exit_reason: "intake_blocked"`. Surface `partial_spec_path` and `reason` to user. Do not spawn anything further. |
-| `planning_complete` | Update stage-state → "execute-control". Spawn Execute-Control Agent. |
+| `planning_complete` | Update stage-state → "scheduler". Spawn Scheduler Agent. |
 | `planning_needs_research` | Spawn Research Agent (with question from signal). Keep stage at "planning". |
 | `planning_needs_sub_planning` | Spawn sub-Planning Agent for the specified sub-scope. Keep stage at "planning". |
-| `planning_replan_exhausted` | Trigger degradation for the `unresolvable_issues` list from payload. Preserve `partial_plan_ref`. Continue other scopes via Execute-Control. |
+| `planning_replan_exhausted` | Trigger degradation for the `unresolvable_issues` list from payload. Preserve `partial_plan_ref`. Continue other scopes via Scheduler. |
 | `research_complete` | Re-spawn Planning Agent with research findings attached. |
 | `research_inconclusive` | Log `anomaly` entry (severity: low). Re-spawn the requesting stage (usually Planning) with `best_guess` + `confidence < 0.5` flag attached. Requesting stage records any derived decision with low confidence. Does not consume degradation budget by itself. |
 | `dispatch_batch` | Read batch spec from signal. Spawn N Execute Agents (parallel or sequential per `concurrency_mode`). |
@@ -183,7 +183,7 @@ With this exact block (17 rows, organized by stage, plus the batch-settled rule 
 | `execute_failed` | Mark task failed in `stage-state.current_batch.failed_tasks`. Check if batch settled. If not settled → wait. If settled → apply "batch-settled rule" below. |
 | `review_dispatch` | Spawn N review sub-agents per the dispatch list. |
 | `review_sub_verdict` | Check if all review sub-agents in this batch are done. If yes → spawn Merge. If no → wait. |
-| `review_merged` | **Always commit to git first using `payload.commit_message`** (see rule below). Then: `pass`/`pass_with_warnings` → Execute-Control for next batch; `fail` + budget left → Planning replan; `fail` + budget exhausted → degrade. |
+| `review_merged` | **Always commit to git first using `payload.commit_message`** (see rule below). Then: `pass`/`pass_with_warnings` → Scheduler for next batch; `fail` + budget left → Planning replan; `fail` + budget exhausted → degrade. |
 | `stage_exhausted` | Trigger degradation for this scope. Log. Continue other scopes if any. |
 | `all_complete` | Generate delivery bundle. Write `run_end` with `exit_reason: "all_complete"`. Kernel exits. |
 
@@ -344,7 +344,7 @@ execute_failed routing entry added in the previous commit."
 **Files:**
 - Modify: `/Users/waynewang/AI-Robin-Skill/ai-robin/contracts/dispatch-signal.md` (review_merged section, currently lines 347-365; plus example section, currently lines 436-477)
 
-The `review_merged` payload currently carries no commit message, yet the kernel is required to produce a `commit_message` string for every commit ledger entry. This task adds the field so Merge Agent becomes the authoritative producer.
+The `review_merged` payload currently carries no commit message, yet the kernel is required to produce a `commit_message` string for every commit ledger entry. This task adds the field so Merger Agent becomes the authoritative producer.
 
 - [ ] **Step 1: Update the `review_merged` payload schema**
 
@@ -383,7 +383,7 @@ With the extended version (adds `commit_message` and `summary`):
   ],
   "review_iteration": "integer — 1 or 2 or 3",
   "commit_ready": "boolean — always true; kernel commits regardless",
-  "summary": "string — one-paragraph narrative of what was reviewed and the outcome; written by Merge Agent's Phase 4",
+  "summary": "string — one-paragraph narrative of what was reviewed and the outcome; written by Merger Agent's Phase 4",
   "commit_message": "string — the exact git commit message the kernel uses; Conventional Commits-style header + body; see review/merge/phases/phase-4-emit.md for format"
 }
 ```
@@ -396,7 +396,7 @@ Immediately after the updated payload block, the note currently reads (lines 367
 Main agent action:
 1. **Commit all artifacts + this verdict to git immediately** (hard rule)
 2. Then route:
-   - `pass` or `pass_with_warnings` → signal Execute-Control for next batch
+   - `pass` or `pass_with_warnings` → signal Scheduler for next batch
    - `fail` + iteration < budget → signal Planning for replan with issues
    - `fail` + iteration >= budget → trigger degradation
 ```
@@ -407,11 +407,11 @@ Replace with:
 Main agent action:
 1. **Commit all artifacts + this verdict to git immediately** (hard rule).
    Use `payload.commit_message` verbatim as the commit message. Kernel does
-   NOT synthesize its own message — Merge Agent is authoritative.
+   NOT synthesize its own message — Merger Agent is authoritative.
 2. Write a `commit` ledger entry with `content.commit_message` = the exact
    string used (for audit).
 3. Then route:
-   - `pass` or `pass_with_warnings` → signal Execute-Control for next batch
+   - `pass` or `pass_with_warnings` → signal Scheduler for next batch
    - `fail` + iteration < budget → signal Planning for replan with issues
    - `fail` + iteration >= budget → trigger degradation
 ```
@@ -477,18 +477,18 @@ git commit -m "feat(ai-robin): add commit_message + summary to review_merged pay
 
 Closes the broken information pipeline where the kernel was required to
 produce a commit_message ledger entry but had no authoritative source. Now
-Merge Agent produces the exact commit message and the kernel uses it
+Merger Agent produces the exact commit message and the kernel uses it
 verbatim, preserving kernel context-minimalism."
 ```
 
 ---
 
-## Task 5: Update Merge Agent phase-4 to produce commit_message
+## Task 5: Update Merger Agent phase-4 to produce commit_message
 
 **Files:**
 - Modify: `/Users/waynewang/AI-Robin-Skill/ai-robin/review/merge/phases/phase-4-emit.md`
 
-Now that the contract requires a `commit_message`, the Merge Agent must actually produce it. This task adds the composition methodology to phase-4-emit.md.
+Now that the contract requires a `commit_message`, the Merger Agent must actually produce it. This task adds the composition methodology to phase-4-emit.md.
 
 - [ ] **Step 1: Read the current phase-4-emit.md to identify insertion points**
 
@@ -652,7 +652,7 @@ Expected: `2` (one for summary, one for the new compose section).
 ```bash
 cd /Users/waynewang/AI-Robin-Skill
 git add ai-robin/review/merge/phases/phase-4-emit.md
-git commit -m "feat(ai-robin): teach Merge Agent to compose commit_message
+git commit -m "feat(ai-robin): teach Merger Agent to compose commit_message
 
 Adds the Compose commit_message section to phase-4-emit.md with format,
 three concrete examples (pass, pass_with_warnings, fail), and fallback
@@ -699,7 +699,7 @@ In `/Users/waynewang/AI-Robin-Skill/ai-robin/contracts/session-ledger.md`, direc
 ```markdown
 The `commit_message` field is copied verbatim from the source:
 
-- For review commits: `review_merged.payload.commit_message` (produced by Merge Agent's Phase 4)
+- For review commits: `review_merged.payload.commit_message` (produced by Merger Agent's Phase 4)
 - For degradation commits: kernel-composed from the degradation trigger payload using the deterministic pattern `[degradation] <scope>: <short reason>`, where both `<scope>` and `<short reason>` come from the degradation trigger and require no spec reading (preserving kernel context-minimalism).
 
 Kernel does not otherwise synthesize commit messages.
@@ -824,7 +824,7 @@ In `/Users/waynewang/AI-Robin-Skill/ai-robin/consumer/SKILL.md`, replace the exa
 
 ```markdown
 ---
-name: ai-robin-consumer
+name: robin-intake
 description: >
   The Intake Stage sub-agent for AI-Robin. Reads raw user input (chat messages,
   pasted docs, loose requirements), drives a bounded interaction to surface
@@ -833,13 +833,13 @@ description: >
   directly — invoked by the AI-Robin main agent at run start.
 ---
 
-# Consumer Agent — Stage 0: Intake
+# Intake Agent — Stage 0: Intake
 ```
 
 With this:
 
 ```markdown
-# Consumer Agent — Stage 0: Intake
+# Intake Agent — Stage 0: Intake
 
 > **Internal sub-skill — not user-invocable.** Loaded by the ai-robin main
 > agent via the Read tool as part of the orchestrated workflow. This file
@@ -848,7 +848,7 @@ With this:
 > runtime-adaptation section of DESIGN.md.
 ```
 
-(Keep all the content after the original `# Consumer Agent — Stage 0: Intake` heading exactly as it was.)
+(Keep all the content after the original `# Intake Agent — Stage 0: Intake` heading exactly as it was.)
 
 - [ ] **Step 2: Strip frontmatter from planning/SKILL.md**
 
@@ -856,9 +856,9 @@ In `/Users/waynewang/AI-Robin-Skill/ai-robin/planning/SKILL.md`, replace the top
 
 ```markdown
 ---
-name: ai-robin-planning
+name: robin-planner
 description: >
-  The Planning Stage sub-agent for AI-Robin. Reads Consumer's spec output and
+  The Planning Stage sub-agent for AI-Robin. Reads Intake's spec output and
   produces an execution-ready plan with milestones, module boundaries, API
   contracts, and concurrency hints. May re-spawn to handle research gaps,
   sub-planning, or post-review rework. Do NOT invoke directly — invoked by
@@ -886,9 +886,9 @@ In `/Users/waynewang/AI-Robin-Skill/ai-robin/execute-control/SKILL.md`, replace 
 
 ```markdown
 ---
-name: ai-robin-execute-control
+name: robin-scheduler
 description: >
-  The Execute-Control sub-agent for AI-Robin. Reads the plan and current
+  The Scheduler sub-agent for AI-Robin. Reads the plan and current
   progress, decides which milestones to tackle next, determines concurrency
   (how many Execute Agents to spawn and whether parallel or sequential),
   and returns a dispatch batch specification. Do NOT invoke directly —
@@ -896,13 +896,13 @@ description: >
   after each review cycle to prepare the next batch.
 ---
 
-# Execute-Control Agent — Stage 2: Batch Formation
+# Scheduler Agent — Stage 2: Batch Formation
 ```
 
 With:
 
 ```markdown
-# Execute-Control Agent — Stage 2: Batch Formation
+# Scheduler Agent — Stage 2: Batch Formation
 
 > **Internal sub-skill — not user-invocable.** Loaded by the ai-robin main
 > agent via the Read tool as part of the orchestrated workflow. This file
@@ -917,7 +917,7 @@ In `/Users/waynewang/AI-Robin-Skill/ai-robin/execute/SKILL.md`, replace the top 
 
 ```markdown
 ---
-name: ai-robin-execute
+name: robin-executor
 description: >
   The Execute sub-agent for AI-Robin. Given a single task (one milestone's
   work), loads the relevant context, writes/modifies code and specs to
@@ -948,7 +948,7 @@ In `/Users/waynewang/AI-Robin-Skill/ai-robin/research/SKILL.md`, replace the top
 
 ```markdown
 ---
-name: ai-robin-research
+name: robin-researcher
 description: >
   The Research sub-agent for AI-Robin. Given a specific question from
   Planning, uses web search and optionally file inspection to produce
@@ -1007,7 +1007,7 @@ In `/Users/waynewang/AI-Robin-Skill/ai-robin/review/review-plan/SKILL.md`, repla
 
 ```markdown
 ---
-name: ai-robin-review-plan
+name: robin-review-planner
 description: >
   The Review-Plan sub-agent for AI-Robin. Given a batch's change artifacts,
   determines which domain-specific review playbooks to run, and the scope
@@ -1046,13 +1046,13 @@ description: >
   for a batch have returned.
 ---
 
-# Review-Merge Agent
+# Review-Merger Agent
 ```
 
 With:
 
 ```markdown
-# Review-Merge Agent
+# Review-Merger Agent
 
 > **Internal sub-skill — not user-invocable.** Loaded by the ai-robin main
 > agent via the Read tool as part of the orchestrated workflow. This file
@@ -1269,12 +1269,12 @@ breaks a scenario, that's a regression and the edit must be revised.
 ## Scenario 1: Happy path (one-milestone project)
 
 1. User invokes ai-robin with "build a CLI that says hello".
-2. Kernel initializes: stage=`intake`, spawns Consumer Agent.
-3. Consumer runs intake, emits `intake_complete` (no proxy decisions).
+2. Kernel initializes: stage=`intake`, spawns Intake Agent.
+3. Intake runs intake, emits `intake_complete` (no proxy decisions).
    - Routing: `intake_complete` → spawn Planning Agent.
 4. Planning runs, emits `planning_complete` with 1 milestone.
-   - Routing: `planning_complete` → spawn Execute-Control.
-5. Execute-Control emits `dispatch_batch` with 1 task.
+   - Routing: `planning_complete` → spawn Scheduler.
+5. Scheduler emits `dispatch_batch` with 1 task.
    - Routing: `dispatch_batch` → spawn 1 Execute Agent.
 6. Execute Agent emits `execute_complete`.
    - Routing: `execute_complete` → batch-settled rule → 1 complete, 0
@@ -1286,8 +1286,8 @@ breaks a scenario, that's a regression and the edit must be revised.
 9. Merge emits `review_merged` with `commit_message` and
    `overall_status: pass`.
    - Routing: `review_merged` → commit using `payload.commit_message` →
-     back to Execute-Control.
-10. Execute-Control has no more milestones, emits `all_complete`.
+     back to Scheduler.
+10. Scheduler has no more milestones, emits `all_complete`.
     - Routing: `all_complete` → write run_end → exit.
 
 **Status:** Terminates cleanly.
@@ -1305,7 +1305,7 @@ breaks a scenario, that's a regression and the edit must be revised.
 4. Planning receives best_guess, records decision-auth-lib spec with
    `confidence: 0.4, provenance: research_low_confidence`, continues.
 5. Planning emits `planning_complete`.
-   - Routing: `planning_complete` → spawn Execute-Control. (Continues as
+   - Routing: `planning_complete` → spawn Scheduler. (Continues as
      Scenario 1 from step 5.)
 
 **Status:** Terminates cleanly. The low-confidence decision is
@@ -1330,7 +1330,7 @@ auditable via spec provenance.
    artifacts, with `partial_batch_note` referencing failed task-2.
 6. Review proceeds as Scenario 1.
 7. After review commit, kernel routes:
-   - If `overall_status: pass` → back to Execute-Control, which will see
+   - If `overall_status: pass` → back to Scheduler, which will see
      task-2's milestone still `in_progress_milestones` and form a new
      batch for it.
    - If `overall_status: fail` → back to Planning for replan, consuming
@@ -1352,12 +1352,12 @@ re-enters through normal replan / next-batch flow.
 4. Degradation triggered for batch-3 (see `degradation-policy.md` —
    kernel writes context-degraded spec, commits with `[degradation]`
    message).
-5. Kernel returns to Execute-Control for next batch.
+5. Kernel returns to Scheduler for next batch.
 6. Parallel scenario: suppose Planning returned
    `planning_replan_exhausted` at some point (replan budget also spent).
    - Routing: `planning_replan_exhausted` → trigger degradation for
      `unresolvable_issues` → continue other scopes.
-7. Execute-Control sees `degraded_milestones` includes batch-3's
+7. Scheduler sees `degraded_milestones` includes batch-3's
    milestones, skips them, forms next batch from remaining pending.
 8. Eventually `all_complete` (possibly with many degraded milestones) or
    `dispatch_exhausted` if remaining are all blocked on degraded deps.
@@ -1371,9 +1371,9 @@ escalation-notice; run_end carries degradation counts.
 
 1. User invokes ai-robin with "something vague I don't want to
    elaborate".
-2. Consumer Agent runs intake, tries to extract decisions; user responds
+2. Intake Agent runs intake, tries to extract decisions; user responds
    with dismissive one-liners or stops responding after turn 3.
-3. Consumer emits `intake_blocked` with `reason:
+3. Intake emits `intake_blocked` with `reason:
    input_fundamentally_incomplete`.
 4. Routing: `intake_blocked` → write run_end with
    `exit_reason: "intake_blocked"` → surface partial spec path + reason
@@ -1522,7 +1522,7 @@ Plan 1 was authored to specify 10 tasks with exact edit content. During executio
    DESIGN.md uses a numbered-section convention (`## 1. Thesis` … `## 7. 开放问题` … `## 9. 一句话总结`, existing section 8 was "一句话总结" which got renumbered to 9). Implementer maintained the convention rather than introducing an unnumbered outlier. Approved as a reasonable judgment call.
 
 6. **Task 10 — 9 scenarios instead of 5.**
-   Original spec had 5 scenarios with a "coverage check" section noting some signals weren't explicitly walked through. Code review flagged this as non-compliant (plan required every signal type appear in at least one scenario). Fix commit `8a763ff` split Scenario 2 into 2a (research_complete happy path) and 2b (research_inconclusive), added Scenario 7 (sub-planning recursion covering `planning_needs_sub_planning`), and Scenario 8 (Execute-Control dispatch_exhausted → replan/degrade covering `dispatch_exhausted`). All 17 signal types now have explicit coverage.
+   Original spec had 5 scenarios with a "coverage check" section noting some signals weren't explicitly walked through. Code review flagged this as non-compliant (plan required every signal type appear in at least one scenario). Fix commit `8a763ff` split Scenario 2 into 2a (research_complete happy path) and 2b (research_inconclusive), added Scenario 7 (sub-planning recursion covering `planning_needs_sub_planning`), and Scenario 8 (Scheduler dispatch_exhausted → replan/degrade covering `dispatch_exhausted`). All 17 signal types now have explicit coverage.
 
 7. **Routing-coverage audit grep regex** — fixed after final verification (commit `bb86315`). The original sed pattern was greedy and produced false-positive "missing signal" output on current SKILL.md rows. The corrected anchored regex is now documented in `tests/routing-coverage.md` and in Check #1 above.
 

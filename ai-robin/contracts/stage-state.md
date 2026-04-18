@@ -91,7 +91,7 @@ against stray signals).
 
 When `active_invocations` is empty AND no signal is in inbox, the run is idle —
 this is normal only if `current_stage` is `"done"`. Otherwise it's an anomaly
-(see `agents/kernel/discipline.md`).
+(see `skills/robin-kernel/discipline.md`).
 
 ### `current_batch`
 Only meaningful during Execute → Review cycles. Tracks which batch of tasks is
@@ -113,7 +113,7 @@ Settlement triggers the batch-settled rule (see SKILL.md) exactly once.
 
 When a batch completes review (pass or budget-exhausted fail), `current_batch`
 either advances to the next batch (set to a new batch_id, new tasks[],
-`failed_tasks: []`) or clears to null (if Execute-Control is about to
+`failed_tasks: []`) or clears to null (if Scheduler is about to
 determine the next batch).
 
 ### `plan_pointer`
@@ -171,7 +171,7 @@ the next invocation reads `stage-state.json` and resumes:
 1. If `active_invocations` is non-empty, those sub-agents were killed mid-flight.
    Kernel marks them as anomalies in ledger, decides whether to re-dispatch or
    degrade based on the specific agent:
-   - Consumer / Planning / Execute-Control / Review-Plan / Merge: re-dispatch
+   - Intake / Planning / Scheduler / Review-Plan / Merge: re-dispatch
      (idempotent roles)
    - Execute / Research / Review sub-agents: re-dispatch with "this is a retry"
      flag; if they already wrote partial artifacts, pick up from there

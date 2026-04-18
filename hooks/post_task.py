@@ -52,7 +52,7 @@ def main():
 
     tool_input = payload.get("tool_input", {})
     subagent_type = tool_input.get("subagent_type", "")
-    if not subagent_type.startswith("ai-robin-"):
+    if not subagent_type.startswith("robin-"):
         return 0
 
     cwd = os.environ.get("CLAUDE_PROJECT_DIR") or payload.get("cwd") or os.getcwd()

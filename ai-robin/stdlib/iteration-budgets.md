@@ -4,7 +4,7 @@ The hard limits that bound AI-Robin's execution. Budgets are the mechanism that
 turns "autonomous agent" into "autonomous batch job" — without them, a stuck
 sub-loop could run forever.
 
-Used by: main agent (every turn, to check before routing), Consumer Agent (to
+Used by: main agent (every turn, to check before routing), Intake Agent (to
 record per-run overrides from user), every sub-agent (to check its own
 per-invocation sub-budget before returning).
 
@@ -41,7 +41,7 @@ scope.
 **Decrement rule**: +1 every time a batch's review returns `fail` AND triggers
 a replan (not when review passes; not when failure triggers degradation).
 
-**Reset**: when a new batch is formed by Execute-Control.
+**Reset**: when a new batch is formed by Scheduler.
 
 ### Per-scope budgets (reset per top-level scope)
 
@@ -57,7 +57,7 @@ invocation of a scope. (The initial Planning dispatch doesn't count — only
 re-invocations triggered by research gaps, sub-planning needs, or review
 failures.)
 
-**Reset**: when moving to a new top-level scope (rare; usually only at Consumer
+**Reset**: when moving to a new top-level scope (rare; usually only at Intake
 -> Planning transition).
 
 #### `research_depth_per_question`
@@ -78,7 +78,7 @@ resets the depth counter).
 #### `wall_clock_total_seconds`
 **Default: 14400 (4 hours)**
 
-Maximum total wall-clock time the run can take. Can be overridden at Consumer
+Maximum total wall-clock time the run can take. Can be overridden at Intake
 stage (user-specified "don't run more than 1 hour" → 3600).
 
 **Decrement rule**: kernel checks elapsed time on every routing turn against
@@ -96,7 +96,7 @@ tokens_estimated`. Kernel sums these.
 **Decrement rule**: kernel sums reported tokens after each signal. If cumulative
 > budget, trigger global degrade.
 
-Defaults are generous; users can tighten via Consumer intake.
+Defaults are generous; users can tighten via Intake intake.
 
 #### `max_total_milestones_attempted`
 **Default: 50**
@@ -110,7 +110,7 @@ intake may need to narrow scope.
 
 ### Per-sub-agent budgets (sub-agents self-enforce)
 
-Each sub-agent's SKILL.md defines its own internal budget (e.g., "Consumer
+Each sub-agent's SKILL.md defines its own internal budget (e.g., "Intake
 Agent caps at 15 Q&A turns with user"). Those are separate from the budgets
 in this file, but the sub-agent reports consumption to main agent on return.
 
@@ -129,7 +129,7 @@ If either per-batch or replan budget hits zero, the scope is degraded.
 
 ## Overrides at intake
 
-Consumer Agent may ask the user for budget adjustments. Common cases:
+Intake Agent may ask the user for budget adjustments. Common cases:
 
 - "I only have 30 minutes" → wall_clock_total_seconds = 1800
 - "This is a large project" → max_total_milestones_attempted = 100
@@ -227,7 +227,7 @@ Kernel: budget_exhausted on review_iterations_per_batch[batch-3]
 Kernel: skip replan (would have decremented replan_iterations), route to degrade-batch-3
 Kernel: write context-degraded-batch3.yaml spec, write escalation-notice section
 Kernel: mark batch 3 as degraded in stage-state.plan_pointer.degraded_milestones
-Kernel: return to Execute-Control for batch 4
+Kernel: return to Scheduler for batch 4
 ```
 
 ### Example 2: Wall clock nearly exhausted

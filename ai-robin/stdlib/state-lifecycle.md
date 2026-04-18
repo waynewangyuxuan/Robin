@@ -35,8 +35,8 @@ internal state within a single sub-agent's work:
 - **Before returning**, the sub-agent MUST promote draft specs to
   `active` (or another terminal state). Sub-agents do not leave
   drafts for downstream agents to interpret.
-- **Exception**: Consumer's return signal may include explicitly
-  `draft` specs in the rare case that Consumer is uncertain and
+- **Exception**: Intake's return signal may include explicitly
+  `draft` specs in the rare case that Intake is uncertain and
   hasn't resolved via asking or proxying. These go in
   `unresolved_but_deferred` of the return signal, signaling Planning
   that these need finalization.
@@ -161,7 +161,7 @@ if attempted.
 
 ## Who can promote what
 
-- **Consumer**: may leave some specs `draft` if flagged in
+- **Intake**: may leave some specs `draft` if flagged in
   `unresolved_but_deferred`; promotes the rest to `active` before
   returning
 - **Planning**: promotes to `active`; marks previous specs
@@ -183,7 +183,7 @@ if attempted.
 2. **State field is semantically lifecycle, not audit.** Don't use
    state to mark "made by agent vs user" — that's `provenance.
    source_type`. Don't use state to mark "needs review" — in
-   AI-Robin, no human review happens after Consumer, so
+   AI-Robin, no human review happens after Intake, so
    `draft`-as-marker is not meaningful.
 3. **Transitions are recorded in the spec yaml** — when a state
    changes, update the spec's `produced_at` or add a history note in
@@ -196,7 +196,7 @@ if attempted.
 
 ## Context pulling with states
 
-Execute Agent's context pulling (per `agents/execute/context-pulling.md`)
+Execute Agent's context pulling (per `skills/robin-executor/context-pulling.md`)
 respects state:
 
 | State | Pulled? |

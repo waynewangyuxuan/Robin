@@ -13,12 +13,12 @@ breaks a scenario, that's a regression and the edit must be revised.
 ## Scenario 1: Happy path (one-milestone project)
 
 1. User invokes ai-robin with "build a CLI that says hello".
-2. Kernel initializes: stage=`intake`, spawns Consumer Agent.
-3. Consumer runs intake, emits `intake_complete` (no proxy decisions).
+2. Kernel initializes: stage=`intake`, spawns Intake Agent.
+3. Intake runs intake, emits `intake_complete` (no proxy decisions).
    - Routing: `intake_complete` → spawn Planning Agent.
 4. Planning runs, emits `planning_complete` with 1 milestone.
-   - Routing: `planning_complete` → spawn Execute-Control.
-5. Execute-Control emits `dispatch_batch` with 1 task.
+   - Routing: `planning_complete` → spawn Scheduler.
+5. Scheduler emits `dispatch_batch` with 1 task.
    - Routing: `dispatch_batch` → spawn 1 Execute Agent.
 6. Execute Agent emits `execute_complete`.
    - Routing: `execute_complete` → mark task complete in
@@ -31,8 +31,8 @@ breaks a scenario, that's a regression and the edit must be revised.
 9. Merge emits `review_merged` with `commit_message` and
    `overall_status: pass`.
    - Routing: `review_merged` → commit using `payload.commit_message`
-     verbatim → back to Execute-Control.
-10. Execute-Control has no more milestones, emits `all_complete`.
+     verbatim → back to Scheduler.
+10. Scheduler has no more milestones, emits `all_complete`.
     - Routing: `all_complete` → write `run_end` ledger entry → exit.
 
 **Status:** Terminates cleanly.
@@ -54,7 +54,7 @@ breaks a scenario, that's a regression and the edit must be revised.
 3. Planning receives findings, records `decision-auth-lib` spec with
    `confidence: 0.85, provenance: research`, proceeds to Phase 2+.
 4. Planning emits `planning_complete`.
-   - Routing: spawn Execute-Control. (Continues as Scenario 1 from
+   - Routing: spawn Scheduler. (Continues as Scenario 1 from
      step 5.)
 
 **Status:** Terminates cleanly. High-confidence decision preserved in
@@ -74,7 +74,7 @@ spec provenance.
 4. Planning receives best_guess, records decision-auth-lib spec with
    `confidence: 0.4, provenance: research_low_confidence`, continues.
 5. Planning emits `planning_complete`.
-   - Routing: `planning_complete` → spawn Execute-Control. (Continues as
+   - Routing: `planning_complete` → spawn Scheduler. (Continues as
      Scenario 1 from step 5.)
 
 **Status:** Terminates cleanly. The low-confidence decision is
@@ -101,12 +101,12 @@ consume degradation budget.
    failure of task-2. Dispatches playbooks over the completed scopes
    plus a note about partial coverage.
 6. Review proceeds as Scenario 1 (sub-verdicts → Merge).
-7. Merge emits `review_merged`. For failed/mixed batches the Merge Agent
+7. Merge emits `review_merged`. For failed/mixed batches the Merger Agent
    typically composes a `review(failed):` header in `commit_message`
-   (see `agents/review/merge/phases/phase-4-emit.md`).
+   (see `skills/robin-merger/phases/phase-4-emit.md`).
    - Routing: commit verbatim. Then:
      - If `overall_status: pass`/`pass_with_warnings` → back to
-       Execute-Control (which will see task-2's milestone still
+       Scheduler (which will see task-2's milestone still
        `in_progress` and form a new batch).
      - If `overall_status: fail` + budget left → Planning replan.
      - If `overall_status: fail` + `review_iterations_per_batch`
@@ -134,7 +134,7 @@ is silently skipped; every failure is verdict-logged per the
    artifacts exist.
 4. If zero playbooks dispatched: `review_dispatch.playbooks = []`.
    Kernel treats as the "zero sub-verdicts" path: Merge is still spawned
-   per `agents/review/merge/SKILL.md` § "Error handling" ("Zero sub-verdicts
+   per `skills/robin-merger/SKILL.md` § "Error handling" ("Zero sub-verdicts
    present" row). Merge produces the fallback `review(anomaly):`
    verdict with `overall_status: fail`.
 5. If playbooks dispatched over partial artifacts: normal
@@ -161,13 +161,13 @@ audit trail records the exact attempt via the commit + ledger.
 4. Degradation triggered for batch-3 (see `degradation-policy.md` —
    kernel writes context-degraded spec, commits with the deterministic
    `[degradation] <scope>: <short reason>` kernel-composed message).
-5. Kernel returns to Execute-Control for next batch.
+5. Kernel returns to Scheduler for next batch.
 6. Parallel scenario: suppose Planning returned
    `planning_replan_exhausted` at some point (replan budget also spent).
    - Routing: `planning_replan_exhausted` → trigger degradation for
      `unresolvable_issues` list → continue other scopes via
-     Execute-Control.
-7. Execute-Control sees `degraded_milestones` includes batch-3's
+     Scheduler.
+7. Scheduler sees `degraded_milestones` includes batch-3's
    milestones, skips them, forms next batch from remaining pending.
 8. Eventually `all_complete` (possibly with many degraded milestones) or
    `dispatch_exhausted` if all remaining are blocked on degraded deps.
@@ -181,9 +181,9 @@ escalation-notice; `run_end` carries degradation counts.
 
 1. User invokes ai-robin with "something vague I don't want to
    elaborate".
-2. Consumer Agent runs intake, tries to extract decisions; user responds
+2. Intake Agent runs intake, tries to extract decisions; user responds
    with dismissive one-liners or stops responding after turn 3.
-3. Consumer emits `intake_blocked` with `reason:
+3. Intake emits `intake_blocked` with `reason:
    input_fundamentally_incomplete`.
    - Routing: `intake_blocked` → write `run_end` with
      `exit_reason: "intake_blocked"` → surface `partial_spec_path` +
@@ -208,19 +208,19 @@ escalation-notice; `run_end` carries degradation counts.
    sub-plan Room. Emits `planning_complete` (from the nested invocation).
    - Routing: parent-kernel merges the sub-plan's milestones into the
      overall plan, then treats the top-level Planning as complete;
-     advances to Execute-Control. (Continues as Scenario 1 step 5.)
+     advances to Scheduler. (Continues as Scenario 1 step 5.)
 
 **Status:** Terminates cleanly. Sub-plan milestones are
 indistinguishable from any other in the merged plan.
 
 ---
 
-## Scenario 8: Execute-Control cannot form a batch
+## Scenario 8: Scheduler cannot form a batch
 
 1. Kernel at stage=`execute-control` after a review cycle. All
    remaining pending milestones depend on batch-3's output, which was
    degraded in Scenario 5.
-2. Execute-Control attempts to pick a runnable milestone, finds every
+2. Scheduler attempts to pick a runnable milestone, finds every
    candidate is blocked on a degraded dependency (or the plan contains
    a circular reference). Emits `dispatch_exhausted` with
    `reason: "blocked_milestones"`.

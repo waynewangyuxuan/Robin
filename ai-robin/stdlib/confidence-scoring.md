@@ -1,7 +1,7 @@
 # Confidence Scoring
 
 How to assign the `provenance.confidence` value (0.0-1.0) on a spec. Used by
-every sub-agent that produces specs (Consumer, Planning, Research, Execute).
+every sub-agent that produces specs (Intake, Planning, Research, Execute).
 
 This module is adapted from Feature Room's random-contexts confidence table
 and expanded for AI-Robin's additional source types.
@@ -44,7 +44,7 @@ User said it directly in their input.
 |---|---|
 | Direct, unambiguous statement ("use Postgres") | 1.0 |
 | Direct statement with minor hedging ("I think Postgres is fine") | 0.9 |
-| Direct answer to a Consumer question | 1.0 |
+| Direct answer to a Intake question | 1.0 |
 | Quoted from a pasted document | 0.95 |
 
 ### `user_implied`
@@ -57,9 +57,9 @@ Not said directly; inferred from what the user said.
 | Inferred from multiple consistent hints | 0.75 |
 | Inferred from a single indirect hint | 0.65 |
 
-### `agent_proxy` (Consumer's proxy decisions)
+### `agent_proxy` (Intake's proxy decisions)
 
-Consumer filled a gap with a defensible default.
+Intake filled a gap with a defensible default.
 
 | Signal | Confidence |
 |---|---|
@@ -106,7 +106,7 @@ Automatic anchor update after code change.
 
 ### `prd_extraction`, `chat_extraction`
 
-Consumer extracting from documents or chat logs.
+Intake extracting from documents or chat logs.
 
 | Signal | Confidence |
 |---|---|

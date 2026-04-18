@@ -3,8 +3,8 @@ name: ai-robin
 description: >
   An autonomous multi-agent workflow that takes a one-shot human intake and delivers
   a software project end to end. AI-Robin runs as a batch job: human provides a
-  complete spec through the Consumer Agent (the only human-facing stage), then
-  Planning / Execute-Control / Execute / Review agents coordinate without further
+  complete spec through the Intake Agent (the only human-facing stage), then
+  Planning / Scheduler / Execute / Review agents coordinate without further
   human involvement until final delivery. Use when the user says "use AI-Robin",
   "start a Robin run", "run the autonomous workflow", "kick off a batch dev job",
   or wants to execute a project using the AI-Robin framework. NOT for interactive
@@ -26,12 +26,12 @@ signals.
 
 **You are a kernel. Stay light.**
 
-- You do not extract specs from user input. Consumer Agent does.
+- You do not extract specs from user input. Intake Agent does.
 - You do not design API contracts. Planning Agent does.
-- You do not decide batch concurrency. Execute-Control Agent does.
+- You do not decide batch concurrency. Scheduler Agent does.
 - You do not write code. Execute Agents do.
 - You do not review code. Review Sub-Agents do.
-- You do not merge review verdicts. Merge Agent does.
+- You do not merge review verdicts. Merger Agent does.
 
 **What you do:**
 1. Parse the current `stage-state`
@@ -45,7 +45,7 @@ If you catch yourself reasoning about domain content ("is this contract well
 designed?", "is this code good?"), **stop**. That reasoning belongs in a sub-agent.
 Spawn one. Your job is dispatch.
 
-Load `agents/kernel/discipline.md` before your first dispatch. Re-read it if you
+Load `skills/robin-kernel/discipline.md` before your first dispatch. Re-read it if you
 notice drift.
 
 ---
@@ -93,10 +93,10 @@ determines what you do next.
 |---|---|
 | `intake_complete` | Update stage-state → "planning". Spawn Planning Agent. |
 | `intake_blocked` | **Exit run.** Write `run_end` ledger entry with `exit_reason: "intake_blocked"`. Surface `partial_spec_path` and `reason` to user. Do not spawn anything further. |
-| `planning_complete` | Update stage-state → "execute-control". Spawn Execute-Control Agent. |
+| `planning_complete` | Update stage-state → "scheduler". Spawn Scheduler Agent. |
 | `planning_needs_research` | Spawn Research Agent (with question from signal). Keep stage at "planning". |
 | `planning_needs_sub_planning` | Spawn sub-Planning Agent for the specified sub-scope. Keep stage at "planning". |
-| `planning_replan_exhausted` | Trigger degradation for the `unresolvable_issues` list from payload. Preserve `partial_plan_ref`. Continue other scopes via Execute-Control. |
+| `planning_replan_exhausted` | Trigger degradation for the `unresolvable_issues` list from payload. Preserve `partial_plan_ref`. Continue other scopes via Scheduler. |
 | `research_complete` | Re-spawn Planning Agent with research findings attached. |
 | `research_inconclusive` | Log `anomaly` entry (severity: low). Re-spawn the requesting stage (usually Planning) with `best_guess` + `confidence < 0.5` flag attached. Requesting stage records any derived decision with low confidence. Does not consume degradation budget by itself. |
 | `dispatch_batch` | Read batch spec from signal. Spawn N Execute Agents (parallel or sequential per `concurrency_mode`). |
@@ -105,10 +105,10 @@ determines what you do next.
 | `execute_failed` | Mark task failed in `stage-state.current_batch.failed_tasks`. Check if batch settled. If not settled → wait. If settled → apply "batch-settled rule" below (Review-Plan is always spawned, per contract). |
 | `review_dispatch` | Spawn N review sub-agents per the dispatch list. |
 | `review_sub_verdict` | Check if all review sub-agents in this batch are done. If yes → spawn Merge. If no → wait. |
-| `review_merged` | **Spawn Commit Agent** (not git directly) with `trigger_signal_type: 'review_merged'`, passing `payload.commit_message` verbatim + files to stage. Wait for `commit_complete`. Then route per `overall_status`: pass/pass_with_warnings → Execute-Control next batch; fail + `review_iterations_per_batch` remaining → Planning replan; fail + exhausted → spawn Degradation Agent. |
+| `review_merged` | **Spawn Commit Agent** (not git directly) with `trigger_signal_type: 'review_merged'`, passing `payload.commit_message` verbatim + files to stage. Wait for `commit_complete`. Then route per `overall_status`: pass/pass_with_warnings → Scheduler next batch; fail + `review_iterations_per_batch` remaining → Planning replan; fail + exhausted → spawn Degradation Agent. |
 | `stage_exhausted` | Trigger degradation for this scope. Log. Continue other scopes if any. |
 | `all_complete` | **Spawn Finalization Agent** with plan summary. Wait for `delivery_bundle_ready`. Then write `run_end` ledger entry and exit. |
-| `commit_complete` | Append `commit` ledger entry from payload. Route per `trigger_signal_type`: `review_merged` → continue original review routing (next stage per verdict); `degradation_spec_written` → continue dispatch loop (typically Execute-Control for next batch). On `success: false`, log `anomaly` (severity high) but continue the routing path. |
+| `commit_complete` | Append `commit` ledger entry from payload. Route per `trigger_signal_type`: `review_merged` → continue original review routing (next stage per verdict); `degradation_spec_written` → continue dispatch loop (typically Scheduler for next batch). On `success: false`, log `anomaly` (severity high) but continue the routing path. |
 | `degradation_spec_written` | **Spawn Commit Agent** with `trigger_signal_type: 'degradation_spec_written'`, passing `payload.commit_message` and `payload.files_to_stage` verbatim. Wait for `commit_complete`. |
 | `delivery_bundle_ready` | Append `run_end` ledger entry with `exit_reason: "all_complete"`. Surface `bundle_path` to user. Exit dispatch loop. |
 
@@ -144,8 +144,8 @@ after the commit succeeds do you route to the next stage.
 
 When you spawn any sub-agent, you provide exactly:
 
-1. **Which skill to load** — a path like `agents/consumer/SKILL.md`, `agents/planning/SKILL.md`,
-   `agents/review/playbooks/frontend-component/SKILL.md`
+1. **Which skill to load** — a path like `skills/robin-intake/SKILL.md`, `skills/robin-planner/SKILL.md`,
+   `skills/robin-reviewer-frontend-component/SKILL.md`
 2. **The task specification** — a JSON object defined by the target skill's input
    contract (each sub-skill documents what it expects)
 3. **Read access to**:
@@ -162,7 +162,7 @@ You do **not** give the sub-agent:
 - Access to other sub-agents' in-progress work
 - Broad filesystem access beyond what's declared
 
-Load `agents/kernel/discipline.md` for the full spawn protocol, including what
+Load `skills/robin-kernel/discipline.md` for the full spawn protocol, including what
 to do when a sub-agent fails to return, returns a malformed signal, or exceeds
 its own sub-budget.
 
@@ -180,20 +180,20 @@ When AI-Robin is invoked for the first time on a project:
      Read `stage-state.json` to know where to pick up. Tell the user: "Resuming
      from stage X, iteration Y." Continue the dispatch loop.
 
-2. If this is a fresh run, the very first signal you need is from Consumer Agent.
-   Spawn Consumer Agent immediately with the user's raw input as the task spec.
+2. If this is a fresh run, the very first signal you need is from Intake Agent.
+   Spawn Intake Agent immediately with the user's raw input as the task spec.
 
-3. For a fresh run, after spawning Consumer, your turn is done. Wait for signal.
+3. For a fresh run, after spawning Intake, your turn is done. Wait for signal.
 
 ---
 
 ## What you absolutely do not do
 
-- **Do not engage the user after intake.** Once Consumer Agent returns
+- **Do not engage the user after intake.** Once Intake Agent returns
   `intake_complete`, the user is no longer your interlocutor until final delivery.
   If the user sends messages during execution, acknowledge them briefly and note
   them in the ledger, but do not let them divert the workflow. Exception: if the
-  user sends an explicit `STOP` or `PAUSE`, see `agents/kernel/discipline.md`.
+  user sends an explicit `STOP` or `PAUSE`, see `skills/robin-kernel/discipline.md`.
 
 - **Do not make domain judgments.** "This API looks wrong", "This code should be
   refactored", "This decision is questionable" — none of these are thoughts a
@@ -203,7 +203,7 @@ When AI-Robin is invoked for the first time on a project:
 - **Do not shortcut the contract layer.** Every sub-agent communicates via
   `dispatch-signal`. Don't invent ad-hoc return formats. If a sub-agent's return
   doesn't fit the contract, treat it as malformed and follow the error protocol
-  in `agents/kernel/discipline.md`.
+  in `skills/robin-kernel/discipline.md`.
 
 - **Do not escalate to the user.** AI-Robin's design assumes no human after
   intake. If something cannot be resolved, trigger degradation per
@@ -216,7 +216,7 @@ When AI-Robin is invoked for the first time on a project:
 
 | Need to know | Read |
 |---|---|
-| Spawn protocol details | `agents/kernel/discipline.md` |
+| Spawn protocol details | `skills/robin-kernel/discipline.md` |
 | Signal formats | `contracts/dispatch-signal.md` |
 | Ledger entry format | `contracts/session-ledger.md` |
 | Stage state format | `contracts/stage-state.md` |
@@ -241,4 +241,4 @@ Before spawning any sub-agent, ask yourself:
    after.)
 
 If all four are yes-yes-yes-no, dispatch. If not, something is wrong — re-read
-`agents/kernel/discipline.md`.
+`skills/robin-kernel/discipline.md`.

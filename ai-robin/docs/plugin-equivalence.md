@@ -16,8 +16,8 @@ Per `ai-robin/DESIGN.md §8`:
    one signal file.
 3. **Lexicographic signal ordering.** When multiple signals are in inbox,
    kernel processes them in lexicographic signal_id order (per
-   `agents/kernel/discipline.md §3.5`).
-4. **Sub-skill files have no YAML frontmatter.** `ai-robin/agents/*/SKILL.md`
+   `skills/robin-kernel/discipline.md §3.5`).
+4. **Sub-skill files have no YAML frontmatter.** `skills/robin-*/SKILL.md`
    remain frontmatter-less. The plugin's own `.claude-plugin/agents/*.md`
    wrappers have frontmatter (needed by Claude Code's agent-registration
    mechanism) but never contain methodology content — they only `Read` the
@@ -31,16 +31,16 @@ Per `ai-robin/DESIGN.md §8`:
 
 ## What the plugin adds
 
-1. **Slash-command entry points.** `/ai-robin-start`, `/ai-robin-resume`,
-   `/ai-robin-status` replace natural-language skill activation.
+1. **Slash-command entry points.** `/robin-start`, `/robin-resume`,
+   `/robin-status` replace natural-language skill activation.
    Reliability ↑.
 2. **First-class agent wrappers.** Each sub-agent is addressable via
-   `Task(subagent_type: "ai-robin-...")`. Claude Code's tool system enforces
+   `Task(subagent_type: "robin-...")`. Claude Code's tool system enforces
    that these names route correctly; accidental activation from user NL is no
    longer possible (Severe #6 from the pre-reorg audit).
 3. **Hook-based ordering enforcement.** `pre_task.py` and `post_task.py`
    mechanically enforce the ledger-append-before-routing rule that was
-   previously prose in `agents/kernel/discipline.md §4`. The abstract rule
+   previously prose in `skills/robin-kernel/discipline.md §4`. The abstract rule
    remains in the prose for portability to other runtimes; the hooks are one
    concrete implementation.
 4. **Auto-resume hint at SessionStart.** `session_start.py` detects
@@ -52,7 +52,7 @@ Per `ai-robin/DESIGN.md §8`:
 ## What the plugin deliberately does NOT do
 
 - Does not replace the abstract methodology (still in
-  `ai-robin/agents/*/SKILL.md`).
+  `skills/robin-*/SKILL.md`).
 - Does not enforce tool scopes per-agent beyond what each wrapper's
   frontmatter `tools:` field declares (Claude Code's own enforcement applies).
 - Does not run any end-to-end behavioral validation automatically — that

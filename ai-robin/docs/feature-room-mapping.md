@@ -48,7 +48,7 @@ META/
 │   ├── progress.yaml
 │   ├── _tree.yaml
 │   └── specs/
-├── 00-ai-robin-plan/          # AI-Robin 特有：Planning workspace
+├── 00-robin-plan/          # AI-Robin 特有：Planning workspace
 │   ├── room.yaml
 │   ├── progress.yaml
 │   └── specs/
@@ -104,9 +104,9 @@ ai_robin_context:
 
 Feature Room 原系统不读这个字段，忽略即可；AI-Robin 用它关联 git commit 到 batch / review。
 
-### 特殊 room：`00-ai-robin-plan/`
+### 特殊 room：`00-robin-plan/`
 
-Consumer 产出阶段就创建这个 room，作为 Planning 和 Execute-Control 的 workspace。里面放全局 plan 的 progress.yaml、planning 产出的 decision / contract spec 等。
+Intake 产出阶段就创建这个 room，作为 Planning 和 Scheduler 的 workspace。里面放全局 plan 的 progress.yaml、planning 产出的 decision / contract spec 等。
 
 这个 room 在 Feature Room 原系统里不存在，但它只是一个普通 Room，符合 Feature Room 的目录结构规约，所以原系统读它也不会 break——只是看到"一个额外的 room"。
 
@@ -118,15 +118,15 @@ Consumer 产出阶段就创建这个 room，作为 Planning 和 Execute-Control 
 
 | Feature Room skill | AI-Robin 对应 |
 |---|---|
-| `room-init` | Consumer Phase 7（init-rooms）从零重写 |
+| `room-init` | Intake Phase 7（init-rooms）从零重写 |
 | `timeline-init` | 不用；AI-Robin 不跑 timeline |
 | `room` | 不用；AI-Robin 不跑 room-level 更新循环 |
 | `random-contexts` | 方法论抽到 `stdlib/confidence-scoring.md` |
-| `prompt-gen` | 方法论抽到 `agents/execute/context-pulling.md` |
-| `commit-sync` | 方法论抽到 `agents/execute/commit-preparation.md` + `stdlib/anchor-tracking.md`；git commit 本身由 kernel 做 |
+| `prompt-gen` | 方法论抽到 `skills/robin-executor/context-pulling.md` |
+| `commit-sync` | 方法论抽到 `skills/robin-executor/commit-preparation.md` + `stdlib/anchor-tracking.md`；git commit 本身由 kernel 做 |
 | `room-status` | 不用；audit 用 ledger + git log |
 
-**为什么不直接 import 这些 skill**：原 skill 的每一步都假设 human 在 loop 里做决策（确认、选择、提问）。AI-Robin 的核心约束是 "no human after Consumer"，所以每个 skill 的交互循环都要拆掉，只留方法论。直接 import 会把 human-in-loop 假设带进来，违背核心设计。
+**为什么不直接 import 这些 skill**：原 skill 的每一步都假设 human 在 loop 里做决策（确认、选择、提问）。AI-Robin 的核心约束是 "no human after Intake"，所以每个 skill 的交互循环都要拆掉，只留方法论。直接 import 会把 human-in-loop 假设带进来，违背核心设计。
 
 ---
 
@@ -136,10 +136,10 @@ Consumer 产出阶段就创建这个 room，作为 Planning 和 Execute-Control 
 
 - 标准 spec yaml（7 type，5 state 原系统认识的，1 degraded 不认识但不 break）
 - 标准 `spec.md` / `progress.yaml` / `_tree.yaml`
-- 额外的 `00-ai-robin-plan/` room（作为普通 Room 被读到）
+- 额外的 `00-robin-plan/` room（作为普通 Room 被读到）
 - commits 里额外的 `ai_robin_context` 字段（原 skill 忽略）
 
-**反向不保证**：AI-Robin 不会从 Feature Room 手动 run 的历史 Room 里 resume。如果要接管一个已有项目，推荐先走一次 AI-Robin Consumer stage 让它建立自己的 `00-ai-robin-plan/`。
+**反向不保证**：AI-Robin 不会从 Feature Room 手动 run 的历史 Room 里 resume。如果要接管一个已有项目，推荐先走一次 AI-Robin Intake stage 让它建立自己的 `00-robin-plan/`。
 
 ---
 
@@ -153,7 +153,7 @@ AI-Robin 的 milestone ≈ Feature Room 的 feature-level 计划单元；AI-Robi
 写 spec 的时候，AI-Robin 的 decision / contract / constraint 落在哪个 Room 的判断规则和 Feature Room 一致：
 - 跨模块、跨 Room 的 → `00-project-room/specs/`
 - 单 Room 内的 → 该 Room 的 `specs/`
-- AI-Robin plan 相关的 → `00-ai-robin-plan/specs/`
+- AI-Robin plan 相关的 → `00-robin-plan/specs/`
 
 ---
 
