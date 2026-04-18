@@ -118,7 +118,7 @@ One ledger `routing_decision` entry, N `dispatch` entries.
 
 ### 4. Always append to ledger before updating stage-state
 
-Order of operations when processing a signal:
+The abstract ordering of operations when processing a signal:
 
 1. Read signal from inbox
 2. Append `signal_received` ledger entry
@@ -131,11 +131,31 @@ Order of operations when processing a signal:
 
 Why this order: ledger is append-only and durable; if anything fails mid-way,
 ledger truth is preserved. `stage-state.json` can be reconstructed from ledger
-if it gets corrupted.
+if it gets corrupted. If you get interrupted between step 5 and step 7, the
+next resume will see active_invocations mismatch with reality, trigger an
+anomaly entry, and reconcile.
 
-If you get interrupted between step 5 and step 7, the next resume will see
-active_invocations mismatch with reality, trigger an anomaly entry, and
-reconcile.
+#### Runtime-adapter note (Claude Code)
+
+**In the Claude Code runtime adapter, steps 2, 5-dispatch-entry, and 8 are
+enforced mechanically by plugin hooks — the kernel LLM does not have to
+remember to write these entries:**
+
+- `PreToolUse` hook on Task (`.claude-plugin/hooks/pre_task.py`) → step 5's
+  `dispatch` ledger entry (and in future, step 8's budget decrement)
+- `PostToolUse` hook on Task (`.claude-plugin/hooks/post_task.py`) → step 2's
+  `signal_received` ledger entry + signal shape validation (with `anomaly`
+  logged on malformed signals)
+
+Steps 3, 4, 6, 7 remain the kernel's responsibility: routing is a kernel
+decision that no hook can make; moving signal files and updating stage-state
+happen as part of routing execution.
+
+**In other runtimes** (non-Claude Code), the full 8-step ordering must be
+honored by whatever mechanism the runtime adapter provides. If the adapter
+lacks hook primitives, the kernel implementation must enforce the order in
+its own code. The abstract ordering above is the authoritative spec; the
+Claude Code hooks are one specific enforcement implementation.
 
 ### 5. Malformed signals don't crash the kernel
 
