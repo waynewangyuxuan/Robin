@@ -103,7 +103,7 @@ consume degradation budget.
 6. Review proceeds as Scenario 1 (sub-verdicts → Merge).
 7. Merge emits `review_merged`. For failed/mixed batches the Merge Agent
    typically composes a `review(failed):` header in `commit_message`
-   (see `review/merge/phases/phase-4-emit.md`).
+   (see `agents/review/merge/phases/phase-4-emit.md`).
    - Routing: commit verbatim. Then:
      - If `overall_status: pass`/`pass_with_warnings` → back to
        Execute-Control (which will see task-2's milestone still
@@ -134,7 +134,7 @@ is silently skipped; every failure is verdict-logged per the
    artifacts exist.
 4. If zero playbooks dispatched: `review_dispatch.playbooks = []`.
    Kernel treats as the "zero sub-verdicts" path: Merge is still spawned
-   per `review/merge/SKILL.md` § "Error handling" ("Zero sub-verdicts
+   per `agents/review/merge/SKILL.md` § "Error handling" ("Zero sub-verdicts
    present" row). Merge produces the fallback `review(anomaly):`
    verdict with `overall_status: fail`.
 5. If playbooks dispatched over partial artifacts: normal

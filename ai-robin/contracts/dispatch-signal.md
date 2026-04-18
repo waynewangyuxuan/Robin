@@ -362,7 +362,7 @@ Payload:
   "review_iteration": "integer — 1 or 2 or 3",
   "commit_ready": "boolean — always true; kernel commits regardless",
   "summary": "string — one-paragraph narrative of what was reviewed and the outcome; written by Merge Agent's Phase 4",
-  "commit_message": "string — the exact git commit message the kernel uses; Conventional Commits-style header + body; see review/merge/phases/phase-4-emit.md for format"
+  "commit_message": "string — the exact git commit message the kernel uses; Conventional Commits-style header + body; see agents/review/merge/phases/phase-4-emit.md for format"
 }
 ```
 
@@ -425,7 +425,7 @@ scopes. Only if ALL remaining scopes are exhausted does the whole run end.
 - `signal_id` must be unique within a run. Uniqueness is enforced by the
   producing sub-agent via the `{stage}-{agent}-{timestamp}-{shortuuid}` format.
 - `signal_id` is the sort key the kernel uses to order multiple pending
-  signals; see `stdlib/kernel-discipline.md` § "Signal ordering when inbox
+  signals; see `agents/kernel/discipline.md` § "Signal ordering when inbox
   has multiple files".
 - `signal_type` must be one of the enumerated values in this document
 - `produced_by.invocation_id` must match an invocation main agent actually
@@ -437,7 +437,7 @@ scopes. Only if ALL remaining scopes are exhausted does the whole run end.
 
 ## When main agent receives a malformed signal
 
-See `stdlib/kernel-discipline.md` § "Malformed signal protocol". Summary: log to
+See `agents/kernel/discipline.md` § "Malformed signal protocol". Summary: log to
 ledger as anomaly, do not route, consider re-spawning the sub-agent once with
 a clarification note. If second attempt also malformed, degrade that scope.
 

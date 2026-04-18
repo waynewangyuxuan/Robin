@@ -193,7 +193,7 @@ Kernel does not otherwise synthesize commit messages.
 
 ### `user_message_received`
 User sent a message during execution. Per kernel discipline, this is logged but
-does not divert the workflow (unless it's STOP/PAUSE — see `kernel-discipline.md`).
+does not divert the workflow (unless it's STOP/PAUSE — see `agents/kernel/discipline.md`).
 
 ```json
 {
@@ -286,7 +286,7 @@ machine-parseable.
 - Every `signal_received` is followed by a `routing_decision` within the same
   turn
 - Every `review_merged` signal must produce both a `routing_decision` and a
-  `commit` entry (hard rule from `kernel-discipline.md`)
+  `commit` entry (hard rule from `agents/kernel/discipline.md`)
 - `run_start` appears exactly once, at entry_id 1
 - `run_end` appears at most once, at the end; its absence means the run was
   interrupted (resumable)
@@ -297,7 +297,7 @@ machine-parseable.
 
 ```jsonl
 {"entry_id":1,"timestamp":"2026-04-16T10:00:00Z","entry_type":"run_start","stage":"intake","iteration":0,"content":{"project_root":"/projects/my-app","initial_budgets":{"review_iterations_per_batch":2,"replan_iterations":3},"user_input_summary":"Build an expense-tracking web app with Next.js","ai_robin_version":"0.1.0"},"refs":{}}
-{"entry_id":2,"timestamp":"2026-04-16T10:00:05Z","entry_type":"dispatch","stage":"intake","iteration":1,"content":{"sub_agent":"consumer","invocation_id":"inv-consumer-001","skill_path":"consumer/SKILL.md","context_refs":[],"purpose":"Initial intake of user's raw project request"},"refs":{}}
+{"entry_id":2,"timestamp":"2026-04-16T10:00:05Z","entry_type":"dispatch","stage":"intake","iteration":1,"content":{"sub_agent":"consumer","invocation_id":"inv-consumer-001","skill_path":"agents/consumer/SKILL.md","context_refs":[],"purpose":"Initial intake of user's raw project request"},"refs":{}}
 {"entry_id":3,"timestamp":"2026-04-16T10:18:44Z","entry_type":"signal_received","stage":"intake","iteration":1,"content":{"signal_type":"intake_complete","from_agent":"consumer","declared_complete":true,"artifacts_count":12},"refs":{"signal_id":"intake-consumer-20260416T101844-b2e1"}}
 {"entry_id":4,"timestamp":"2026-04-16T10:18:44Z","entry_type":"routing_decision","stage":"intake","iteration":1,"content":{"triggered_by_signal":"intake-consumer-20260416T101844-b2e1","decision":"Intake complete, 3 rooms created, 12 specs written. Advance to planning.","next_action":"spawn_planning"},"refs":{"signal_id":"intake-consumer-20260416T101844-b2e1"}}
 {"entry_id":5,"timestamp":"2026-04-16T10:18:44Z","entry_type":"stage_transition","stage":"planning","iteration":0,"content":{"from_stage":"intake","to_stage":"planning","reason":"intake_complete signal received"},"refs":{"parent_entry_id":4}}

@@ -172,14 +172,14 @@ scope，分多次 run。
 
 ### 想改 review 严格度
 
-编辑 `review/playbooks/code-quality/SKILL.md` 把某些 rule 的 severity 从
-`quality` 提升到 `blocking`，或降到 `advisory`。
+编辑 `ai-robin/agents/review/playbooks/code-quality/SKILL.md` 把某些 rule 的 severity
+从 `quality` 提升到 `blocking`，或降到 `advisory`。
 
 改完之后 AI-Robin 会按新规则 review。
 
 ### 想加 review playbook
 
-在 `review/playbooks/` 下新建一个目录，写个 `SKILL.md`，描述触发条件
+在 `ai-robin/agents/review/playbooks/` 下新建一个目录，写个 `SKILL.md`，描述触发条件
 （文件 pattern / spec 类型 / content）。Review-Plan 会自动发现它并在
 条件匹配时 dispatch。
 
@@ -260,11 +260,11 @@ Consumer 完成后、在 Planning 开始前，你可以 kill 这次 run。Consum
 
 ## 要了解更多
 
-- `DESIGN.md` —— 完整设计文档、thesis、trade-off 分析
-- `references/architecture.md` —— 架构一页纸
-- `SUMMARY.md` —— 当前文件清单
-- `references/feature-room-mapping.md` —— 数据格式和 Feature Room 的兼容性
-- `references/skill-extraction-log.md` —— 哪些方法论来自哪里
+- `ai-robin/DESIGN.md` —— 完整设计文档、thesis、trade-off 分析
+- `ai-robin/docs/architecture.md` —— 架构一页纸
+- `ai-robin/SUMMARY.md` —— 当前文件清单
+- `ai-robin/docs/feature-room-mapping.md` —— 数据格式和 Feature Room 的兼容性
+- `ai-robin/docs/skill-extraction-log.md` —— 哪些方法论来自哪里
 
 ---
 

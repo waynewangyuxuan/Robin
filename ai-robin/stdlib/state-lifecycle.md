@@ -196,7 +196,7 @@ if attempted.
 
 ## Context pulling with states
 
-Execute Agent's context pulling (per `execute/context-pulling.md`)
+Execute Agent's context pulling (per `agents/execute/context-pulling.md`)
 respects state:
 
 | State | Pulled? |

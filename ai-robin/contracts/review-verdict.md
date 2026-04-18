@@ -140,7 +140,7 @@ to main agent as the payload of a `review_merged` dispatch-signal.
 2. **Consolidation.** If two sub-verdicts flag the same file:line with
    substantively similar issues, merge them. The merged issue cites all source
    playbooks. "Substantively similar" is fuzzy and autonomous — guidance in
-   `review/merge/SKILL.md`.
+   `agents/review/merge/SKILL.md`.
 
 3. **No upgrading severity during merge.** If one playbook says `quality` and
    another says `advisory` about the same thing, merged severity is `quality`

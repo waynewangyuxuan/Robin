@@ -2,7 +2,7 @@
 
 AI-Robin's data persistence reuses the Feature Room specification format. This
 module defines the format as it applies to AI-Robin. For the original
-Feature Room system this was extracted from, see `references/feature-room-mapping.md`.
+Feature Room system this was extracted from, see `docs/feature-room-mapping.md`.
 
 Used by: all sub-agents that produce specs (Consumer, Planning, Research,
 Execute, Review sub-agents). Main agent does not produce specs; it only

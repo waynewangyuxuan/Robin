@@ -45,7 +45,7 @@ If you catch yourself reasoning about domain content ("is this contract well
 designed?", "is this code good?"), **stop**. That reasoning belongs in a sub-agent.
 Spawn one. Your job is dispatch.
 
-Load `stdlib/kernel-discipline.md` before your first dispatch. Re-read it if you
+Load `agents/kernel/discipline.md` before your first dispatch. Re-read it if you
 notice drift.
 
 ---
@@ -141,8 +141,8 @@ after the commit succeeds do you route to the next stage.
 
 When you spawn any sub-agent, you provide exactly:
 
-1. **Which skill to load** — a path like `consumer/SKILL.md`, `planning/SKILL.md`,
-   `review/playbooks/frontend-component/SKILL.md`
+1. **Which skill to load** — a path like `agents/consumer/SKILL.md`, `agents/planning/SKILL.md`,
+   `agents/review/playbooks/frontend-component/SKILL.md`
 2. **The task specification** — a JSON object defined by the target skill's input
    contract (each sub-skill documents what it expects)
 3. **Read access to**:
@@ -159,7 +159,7 @@ You do **not** give the sub-agent:
 - Access to other sub-agents' in-progress work
 - Broad filesystem access beyond what's declared
 
-Load `stdlib/kernel-discipline.md` for the full spawn protocol, including what
+Load `agents/kernel/discipline.md` for the full spawn protocol, including what
 to do when a sub-agent fails to return, returns a malformed signal, or exceeds
 its own sub-budget.
 
@@ -190,7 +190,7 @@ When AI-Robin is invoked for the first time on a project:
   `intake_complete`, the user is no longer your interlocutor until final delivery.
   If the user sends messages during execution, acknowledge them briefly and note
   them in the ledger, but do not let them divert the workflow. Exception: if the
-  user sends an explicit `STOP` or `PAUSE`, see `stdlib/kernel-discipline.md`.
+  user sends an explicit `STOP` or `PAUSE`, see `agents/kernel/discipline.md`.
 
 - **Do not make domain judgments.** "This API looks wrong", "This code should be
   refactored", "This decision is questionable" — none of these are thoughts a
@@ -200,7 +200,7 @@ When AI-Robin is invoked for the first time on a project:
 - **Do not shortcut the contract layer.** Every sub-agent communicates via
   `dispatch-signal`. Don't invent ad-hoc return formats. If a sub-agent's return
   doesn't fit the contract, treat it as malformed and follow the error protocol
-  in `kernel-discipline.md`.
+  in `agents/kernel/discipline.md`.
 
 - **Do not escalate to the user.** AI-Robin's design assumes no human after
   intake. If something cannot be resolved, trigger degradation per
@@ -213,7 +213,7 @@ When AI-Robin is invoked for the first time on a project:
 
 | Need to know | Read |
 |---|---|
-| Spawn protocol details | `stdlib/kernel-discipline.md` |
+| Spawn protocol details | `agents/kernel/discipline.md` |
 | Signal formats | `contracts/dispatch-signal.md` |
 | Ledger entry format | `contracts/session-ledger.md` |
 | Stage state format | `contracts/stage-state.md` |
@@ -238,4 +238,4 @@ Before spawning any sub-agent, ask yourself:
    after.)
 
 If all four are yes-yes-yes-no, dispatch. If not, something is wrong — re-read
-`kernel-discipline.md`.
+`agents/kernel/discipline.md`.

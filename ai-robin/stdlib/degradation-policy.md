@@ -40,7 +40,7 @@ Degradation is triggered by exactly one of these conditions:
      requesting stage's tolerance)
    - `stage_exhausted` (generic)
 
-3. **Repeated anomalies on the same sub-agent.** Per `kernel-discipline.md`,
+3. **Repeated anomalies on the same sub-agent.** Per `agents/kernel/discipline.md`,
    the 2nd malformed signal from the same sub-agent triggers
    stage-appropriate degradation.
 
@@ -138,7 +138,7 @@ Planning either:
 - Adjusts the plan to skip the degraded dependency (if possible)
 - Marks dependent scopes as blocked (which may in turn become degraded)
 
-Planning's response to degradation is defined in `planning/replan-protocol.md`.
+Planning's response to degradation is defined in `agents/planning/replan-protocol.md`.
 
 ### Step 5: Append to escalation-notice
 
@@ -251,7 +251,7 @@ feat(frontend): expense dashboard shell (batch-4 review pass)
 ...
 ```
 
-The failed review commits (also hard-rule from `kernel-discipline.md`) show
+The failed review commits (also hard-rule from `agents/kernel/discipline.md`) show
 the path that led to degradation. The degradation commit marks the decision
 to stop.
 

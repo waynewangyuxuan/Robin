@@ -218,69 +218,70 @@ Sub-agent **必须**：
 
 ```
 ai-robin/
-├── SKILL.md                          # Main agent: dispatch + kernel discipline
-├── DESIGN.md                          # 本文档
-│
-├── contracts/                         # 数据契约
-│   ├── session-ledger.md              # Append-only 决策日志的格式
-│   ├── dispatch-signal.md             # Sub-agent return 给 main agent 的 signal
-│   ├── stage-state.md                 # 当前 stage 的状态表示
-│   ├── review-verdict.md              # Review sub-agent 的统一输出
-│   ├── escalation-notice.md           # 降级时写入交付包的"未完成说明"
-│   └── (spec format 复用 Feature Room; 见 stdlib/feature-room-spec.md)
-│
-├── stdlib/                            # 共享方法论
-│   ├── kernel-discipline.md           # Main agent 作为 kernel 的行为规范
-│   ├── feature-room-spec.md           # Spec yaml 格式 (从 Feature Room 复用)
-│   ├── anchor-tracking.md             # (build-time from commit-sync)
-│   ├── confidence-scoring.md          # (build-time from random-contexts)
-│   ├── state-lifecycle.md             # Spec state 转换规则
-│   ├── iteration-budgets.md           # Review 2 次、re-plan 3 次等 budget
-│   └── degradation-policy.md          # 超 budget 后怎么降级
-│
-├── consumer/                          # Stage 0
-│   ├── SKILL.md
-│   ├── decision-taxonomy.md           # 项目类型 → 必须决策点
-│   ├── question-prioritization.md     # 交互预算 + 问题排序
-│   └── completeness-check.md          # Return 前的 self-review
-│
-├── planning/                          # Stage 1
-│   ├── SKILL.md
-│   ├── contract-design.md             # 怎么设计模块间 API 契约
-│   ├── parallelism-identification.md  # 识别可并行边界
-│   └── replan-protocol.md             # 收到 Review fail 怎么 incremental re-plan
-│
-├── research/                          # Planning 辅助
-│   └── SKILL.md
-│
-├── execute-control/                   # Stage 2
-│   ├── SKILL.md
-│   └── concurrency-rules.md
-│
-├── execute/                           # Stage 3
-│   ├── SKILL.md
-│   ├── context-pulling.md             # (build-time from prompt-gen)
-│   └── commit-preparation.md          # (build-time from commit-sync Phase 1-4)
-│
-├── review/                            # Stage 4
-│   ├── SKILL.md                       # 入口（就是 review-plan）
-│   ├── review-plan/
-│   │   └── SKILL.md                   # Review-Plan Agent
-│   ├── merge/
-│   │   └── SKILL.md                   # Verdict merge
-│   └── playbooks/                     # 各领域 review sub-skills
-│       ├── code-quality/SKILL.md      # 总是 spawn
-│       ├── frontend-component/SKILL.md
-│       ├── frontend-a11y/SKILL.md
-│       ├── backend-api/SKILL.md
-│       ├── db-schema/SKILL.md
-│       ├── agent-integration/SKILL.md
-│       └── test-coverage/SKILL.md
-│
-└── references/
-    ├── architecture.md                # 本文档的可视化/简化版
-    ├── feature-room-mapping.md        # 和 Feature Room 的数据兼容说明
-    └── skill-extraction-log.md        # 哪些 stdlib 是从哪个 external skill 抽取的
+├── SKILL.md                              # kernel entrypoint (routing table)
+├── DESIGN.md                             # 本文档
+├── SUMMARY.md
+├── contracts/                            # 数据契约
+│   ├── dispatch-signal.md                # Sub-agent return 给 main agent 的 signal
+│   ├── session-ledger.md                 # Append-only 决策日志的格式
+│   ├── stage-state.md                    # 当前 stage 的状态表示
+│   ├── review-verdict.md                 # Review sub-agent 的统一输出
+│   └── escalation-notice.md              # 降级时写入交付包的"未完成说明"
+├── agents/                               # 所有 agent 的 package
+│   ├── kernel/                           # Main agent 的内部资源
+│   │   └── discipline.md                 # Main agent 作为 kernel 的行为规范
+│   ├── consumer/                         # Stage 0
+│   │   ├── SKILL.md
+│   │   ├── decision-taxonomy.md          # 项目类型 → 必须决策点
+│   │   ├── question-prioritization.md    # 交互预算 + 问题排序
+│   │   ├── completeness-check.md         # Return 前的 self-review
+│   │   └── phases/
+│   ├── planning/                         # Stage 1
+│   │   ├── SKILL.md
+│   │   ├── contract-design.md            # 怎么设计模块间 API 契约
+│   │   ├── parallelism-identification.md # 识别可并行边界
+│   │   ├── replan-protocol.md            # 收到 Review fail 怎么 incremental re-plan
+│   │   └── phases/
+│   ├── research/                         # Planning 辅助
+│   │   └── SKILL.md
+│   ├── execute-control/                  # Stage 2
+│   │   ├── SKILL.md
+│   │   ├── concurrency-rules.md
+│   │   └── phases/
+│   ├── execute/                          # Stage 3
+│   │   ├── SKILL.md
+│   │   ├── context-pulling.md            # (build-time from prompt-gen)
+│   │   ├── commit-preparation.md         # (build-time from commit-sync Phase 1-4)
+│   │   └── phases/
+│   └── review/                           # Stage 4
+│       ├── SKILL.md                      # 入口（就是 review-plan）
+│       ├── review-plan/
+│       │   └── SKILL.md                  # Review-Plan Agent
+│       ├── merge/
+│       │   └── SKILL.md                  # Verdict merge
+│       └── playbooks/                    # 各领域 review sub-skills
+│           ├── code-quality/SKILL.md     # 总是 spawn
+│           ├── frontend-component/SKILL.md
+│           ├── frontend-a11y/SKILL.md
+│           ├── backend-api/SKILL.md
+│           ├── db-schema/SKILL.md
+│           ├── agent-integration/SKILL.md
+│           └── test-coverage/SKILL.md
+├── stdlib/                               # 共享方法论（kernel-discipline.md 已移走）
+│   ├── feature-room-spec.md              # Spec yaml 格式 (从 Feature Room 复用)
+│   ├── anchor-tracking.md                # (build-time from commit-sync)
+│   ├── confidence-scoring.md             # (build-time from random-contexts)
+│   ├── state-lifecycle.md                # Spec state 转换规则
+│   ├── iteration-budgets.md              # Review 2 次、re-plan 3 次等 budget
+│   └── degradation-policy.md             # 超 budget 后怎么降级
+├── docs/                                 # 架构参考和 migration plans
+│   ├── architecture.md                   # 本文档的可视化/简化版
+│   ├── feature-room-mapping.md           # 和 Feature Room 的数据兼容说明
+│   ├── skill-extraction-log.md           # 哪些 stdlib 是从哪个 external skill 抽取的
+│   └── plan-2-plugin-migration.md        # Plugin migration plan (Phase 1 + Phase 2)
+└── tests/                                # routing audit + end-to-end traces
+    ├── routing-coverage.md
+    └── end-to-end-trace.md
 ```
 
 ---
@@ -351,7 +352,7 @@ Spawn Review-Plan Agent
   ↓
 Main agent 并行 spawn 4 × Review Sub-Agent
   每个 sub-agent 独立:
-    - load 自己的 playbook (review/playbooks/{name}/SKILL.md)
+    - load 自己的 playbook (agents/review/playbooks/{name}/SKILL.md)
     - load change 相关的代码和 spec
     - 运行 playbook 的 checklist
     - 产出 verdict: { status: pass/fail, issues: [...], severity: ... }
@@ -384,7 +385,7 @@ Main agent 并行 spawn 4 × Review Sub-Agent
 ### 阶段 A: 骨架（最先写）
 1. `SKILL.md`（main dispatch）
 2. `contracts/` 下所有 contract 定义
-3. `stdlib/kernel-discipline.md`
+3. `agents/kernel/discipline.md`
 4. `stdlib/feature-room-spec.md`
 5. `stdlib/iteration-budgets.md`
 6. `stdlib/degradation-policy.md`
@@ -399,7 +400,7 @@ Main agent 并行 spawn 4 × Review Sub-Agent
     commit-sync 抽取）
 
 ### 阶段 D: Review playbooks（渐进）
-11. `review/playbooks/code-quality/SKILL.md`（总是 spawn，必须先有）
+11. `agents/review/playbooks/code-quality/SKILL.md`（总是 spawn，必须先有）
 12. 其他 playbook 按需添加——每接触一个新领域加一个
 
 每个阶段跑完，可以 **dog-food** 在一个真实 mini project 上，发现问题、补 gap。
@@ -436,7 +437,7 @@ via inbox" concretely means depends on the runtime.
   1. Read `stage-state.json`.
   2. Check inbox for new signal files.
   3. Process **one** signal (lexicographic order; see
-     `stdlib/kernel-discipline.md`).
+     `agents/kernel/discipline.md`).
   4. Move signal file to `processed/`, append ledger, update state.
 - Parallel sub-agents means: N sub-agents each write one signal file; main
   agent processes them across N turns, one signal at a time.
@@ -481,7 +482,7 @@ Task return value" alone — the signal file is the source of truth for audit.
 - Main agent never reads sub-agent tool-return values as the authoritative
   source of signal content — only the inbox file.
 - Main agent processes one signal per routing action (see
-  `kernel-discipline.md` § 3), regardless of how many are present.
+  `agents/kernel/discipline.md` § 3), regardless of how many are present.
 
 If a runtime cannot satisfy these invariants (e.g., has no filesystem),
 an adapter layer is required. AI-Robin does not ship such adapters — they
@@ -489,7 +490,7 @@ are out of scope for the v1 NLP.
 
 ### Sub-skill invocation and activation
 
-AI-Robin's sub-skills (`consumer/SKILL.md`, `planning/SKILL.md`, etc.)
+AI-Robin's sub-skills (`agents/consumer/SKILL.md`, `agents/planning/SKILL.md`, etc.)
 must **not** be registered as top-level user-invocable skills. Only the
 root `ai-robin/SKILL.md` has YAML frontmatter; all sub-skill files omit
 it so the main agent can load them via the `Read` tool without the

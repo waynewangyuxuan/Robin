@@ -91,7 +91,7 @@ against stray signals).
 
 When `active_invocations` is empty AND no signal is in inbox, the run is idle —
 this is normal only if `current_stage` is `"done"`. Otherwise it's an anomaly
-(see `stdlib/kernel-discipline.md`).
+(see `agents/kernel/discipline.md`).
 
 ### `current_batch`
 Only meaningful during Execute → Review cycles. Tracks which batch of tasks is
