@@ -50,7 +50,20 @@ No other triggers. The kernel cannot degrade on a hunch.
 
 ## Degradation procedure
 
-When any trigger fires, the kernel executes this sequence:
+When any trigger fires, the kernel **dispatches the Degradation Agent** to execute steps 2–5 below (domain-heavy work — reading original specs, composing narrative). The kernel itself only identifies the scope (step 1) and handles the delegation flow (ledger entries, routing between Degradation and Commit Agents). The full flow:
+
+```
+kernel detects trigger
+  → kernel identifies scope (Step 1)
+  → kernel spawns Degradation Agent (Steps 2, 5)
+      → Degradation Agent writes context-degraded spec + updates escalation-notice
+      → Degradation Agent emits `degradation_spec_written` signal
+  → kernel spawns Commit Agent (Step 6)
+      → Commit Agent runs git add + git commit with the message from Degradation Agent
+      → Commit Agent emits `commit_complete` signal
+  → kernel updates stage-state (Step 3) + propagates (Step 4) + logs ledger (Step 7)
+  → kernel continues dispatch loop (Step 8)
+```
 
 ### Step 1: Identify the scope
 
@@ -68,7 +81,9 @@ When any trigger fires, the kernel executes this sequence:
 The scope is recorded in a `context-degraded-*.yaml` spec (see below for
 format).
 
-### Step 2: Write the degradation spec
+### Step 2: Write the degradation spec (Degradation Agent)
+
+**This is Degradation Agent's job, not the kernel's.** The kernel spawns Degradation Agent passing the scope info; Degradation Agent reads the original specs, composes the narrative, and writes the YAML. Kernel never reads spec content directly.
 
 A new spec is created in the relevant Room (or in the root project Room for
 cross-cutting degradations):
@@ -140,25 +155,25 @@ Planning either:
 
 Planning's response to degradation is defined in `agents/planning/replan-protocol.md`.
 
-### Step 5: Append to escalation-notice
+### Step 5: Append to escalation-notice (Degradation Agent)
 
-Main agent writes a new section to `.ai-robin/escalation-notice.md` per the
-format in `contracts/escalation-notice.md`. This is append-only; once written,
-the section is not edited (only corrected with a new section if needed).
+**Also Degradation Agent's job.** Degradation Agent appends a new section to `.ai-robin/escalation-notice.md` per the format in `contracts/escalation-notice.md`, in the same invocation that wrote the degraded spec. This is append-only; once written, the section is not edited (only corrected with a new section if needed).
 
-### Step 6: Commit the degradation
+When Degradation Agent finishes Steps 2 + 5, it emits `degradation_spec_written` signal with:
+- `scope_type`, `scope_id`, `degraded_spec_id`
+- `files_to_commit`: [new context-degraded spec, updated original specs, escalation-notice.md]
+- `commit_message`: ready-to-use verbatim message (kernel passes this to Commit Agent unchanged)
 
-The degradation itself is a state change visible to the human verifier. It
-gets committed to git:
+### Step 6: Commit the degradation (Commit Agent)
+
+**This is Commit Agent's job.** Kernel receives `degradation_spec_written`, spawns Commit Agent with the trigger and the verbatim message from Degradation Agent. Commit Agent runs:
 
 ```
-git add <new context-degraded spec> <updated specs with state:degraded>
-         <.ai-robin/escalation-notice.md>
-git commit -m "[degradation] <scope>: <short reason>"
+git add <files listed in payload.files_to_commit>
+git commit -m "<payload.commit_message verbatim>"
 ```
 
-This preserves the degradation in git history alongside code changes. The
-commit message convention uses `[degradation]` as the room-id-equivalent.
+Commit Agent emits `commit_complete` on completion. Commit message convention: `degradation({scope_id}): <short reason>` (Degradation Agent produces this; kernel never synthesizes commit messages). Preserves the degradation in git history alongside code changes.
 
 ### Step 7: Log to ledger
 

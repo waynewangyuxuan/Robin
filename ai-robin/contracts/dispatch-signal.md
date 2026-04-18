@@ -367,15 +367,43 @@ Payload:
 ```
 
 Main agent action:
-1. **Commit all artifacts + this verdict to git immediately** (hard rule).
-   Use `payload.commit_message` verbatim as the commit message. Kernel does
-   NOT synthesize its own message — Merge Agent is authoritative.
-2. Write a `commit` ledger entry with `content.commit_message` = the exact
-   string used (for audit).
-3. Then route:
+1. **Spawn Commit Agent** with `trigger_signal_type: 'review_merged'`, passing
+   `payload.commit_message` verbatim and the list of files to stage (batch
+   artifacts + the verdict record). Do NOT commit directly — Commit Agent does
+   that. Wait for `commit_complete`.
+2. After `commit_complete` returns: route based on `overall_status`:
    - `pass` or `pass_with_warnings` → signal Execute-Control for next batch
    - `fail` + iteration < budget → signal Planning for replan with issues
-   - `fail` + iteration >= budget → trigger degradation
+   - `fail` + iteration >= budget → spawn Degradation Agent
+
+#### `commit_complete`
+Commit Agent finished executing a git commit (triggered by either `review_merged`
+or `degradation_spec_written`).
+
+Payload:
+```json
+{
+  "batch_id": "string | null — present when commit was triggered by review_merged; null when triggered by degradation",
+  "trigger_signal_type": "'review_merged' | 'degradation_spec_written'",
+  "trigger_signal_id": "string — the signal_id of the signal whose commit this is",
+  "git_hash": "string | null — the SHA of the new commit; null if commit failed",
+  "success": "boolean",
+  "error": "string | null — error message if success is false",
+  "files_committed": "integer",
+  "commit_message": "string — verbatim echo of the message actually used, for audit"
+}
+```
+
+Main agent action: append `commit` ledger entry using the fields in this payload.
+Then route per the trigger:
+- If `trigger_signal_type == 'review_merged'`: continue the `review_merged`
+  routing (next stage per the original verdict — Execute-Control on pass,
+  Planning on fail-with-budget, Degradation Agent on fail-without-budget).
+- If `trigger_signal_type == 'degradation_spec_written'`: continue the dispatch
+  loop (typically back to Execute-Control to attempt next batch).
+- If `success == false`: log `anomaly` entry severity high; continue with the
+  routing path as if the commit had happened (commit failure is recorded but
+  does not halt the run — kernel never retries commits).
 
 ---
 
@@ -398,8 +426,49 @@ Payload:
 }
 ```
 
-Main agent action: write final delivery bundle, append final ledger entry, exit
-the dispatch loop. Surface summary to user upon their next turn.
+Main agent action: spawn Finalization Agent with the plan summary. Wait for
+`delivery_bundle_ready`. Then append `run_end` ledger entry with
+`exit_reason: "all_complete"` and exit the dispatch loop.
+
+#### `delivery_bundle_ready`
+Finalization Agent finished generating the delivery bundle.
+
+Payload:
+```json
+{
+  "bundle_path": "string — where the delivery bundle lives on disk (typically .ai-robin/DELIVERY.md)",
+  "summary": {
+    "milestones_passed": "integer",
+    "milestones_degraded": "integer",
+    "total_commits": "integer",
+    "wall_clock_total_seconds": "integer"
+  }
+}
+```
+
+Main agent action: append `run_end` ledger entry with
+`exit_reason: "all_complete"`. Surface `bundle_path` and summary to user on
+their next turn. Exit dispatch loop.
+
+#### `degradation_spec_written`
+Degradation Agent finished writing the `context-degraded-*.yaml` spec and
+updating `escalation-notice.md`.
+
+Payload:
+```json
+{
+  "scope_type": "'batch' | 'milestone' | 'research_question' | 'plan_scope' | 'global'",
+  "scope_id": "string — batch_id / milestone_id / question_id / etc.",
+  "degraded_spec_id": "string — the context-degraded-*.yaml spec id written",
+  "files_to_commit": ["string — absolute paths of files to be staged for the degradation commit"],
+  "commit_message": "string — verbatim commit message for Commit Agent to use"
+}
+```
+
+Main agent action: spawn Commit Agent with
+`trigger_signal_type: 'degradation_spec_written'`, passing the `commit_message`
+and `files_to_commit` verbatim. Wait for `commit_complete`. Then continue the
+dispatch loop (typically back to Execute-Control for the next batch).
 
 #### `stage_exhausted`
 Generic signal for "this scope's budget ran out and I couldn't do it". Any stage

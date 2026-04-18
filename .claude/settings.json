@@ -1,0 +1,24 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git ls-remote *)",
+      "Bash(git remote *)",
+      "Bash(git push *)",
+      "Bash(git check-ignore *)",
+      "Bash(grep -E '^#### `[a-z_]+`' contracts/dispatch-signal.md)",
+      "Bash(grep -E '^\\\\| `[a-z_]+` \\\\|' SKILL.md)",
+      "Bash(grep -E '^\\\\| `[a-z_]+` \\\\| ✅ \\\\|' /Users/waynewang/AI-Robin-Skill/ai-robin/tests/routing-coverage.md)",
+      "Bash(grep -E '^\\\\| `[a-z_]+` \\\\|' /Users/waynewang/AI-Robin-Skill/ai-robin/tests/routing-coverage.md)",
+      "Bash(grep -E '^\\\\| `[a-z_]+` \\\\| ✅ \\\\|' tests/routing-coverage.md)",
+      "Bash(awk -F'|' '{print $2}')",
+      "Bash(grep -v '^$')",
+      "Bash(grep -E '^\\\\| `[a-z_]+` \\\\| ' SKILL.md)",
+      "Bash(grep -cE '^\\\\| `[a-z_]+` \\\\|' SKILL.md)",
+      "Bash(awk '/^## Routing/,/^### The batch-settled rule/ {print}' SKILL.md)",
+      "Bash(grep -E '^\\\\| `[a-z_]+` \\\\|')",
+      "Bash(grep '| `')",
+      "Bash(grep -E '^\\\\| `\\(intake_complete|intake_blocked|planning_complete|planning_needs_research|planning_needs_sub_planning|planning_replan_exhausted|research_complete|research_inconclusive|dispatch_batch|dispatch_exhausted|execute_complete|execute_failed|review_dispatch|review_sub_verdict|review_merged|stage_exhausted|all_complete\\)` \\\\|' SKILL.md)",
+      "Bash(grep -E '^\\\\| `all_complete` \\\\|' SKILL.md)"
+    ]
+  }
+}

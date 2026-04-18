@@ -105,9 +105,12 @@ determines what you do next.
 | `execute_failed` | Mark task failed in `stage-state.current_batch.failed_tasks`. Check if batch settled. If not settled → wait. If settled → apply "batch-settled rule" below (Review-Plan is always spawned, per contract). |
 | `review_dispatch` | Spawn N review sub-agents per the dispatch list. |
 | `review_sub_verdict` | Check if all review sub-agents in this batch are done. If yes → spawn Merge. If no → wait. |
-| `review_merged` | **Always commit to git first using `payload.commit_message`** (see rule below). Then: `pass`/`pass_with_warnings` → Execute-Control for next batch; `fail` + `review_iterations_per_batch` budget remaining → Planning replan; `fail` + `review_iterations_per_batch` exhausted → degrade. |
+| `review_merged` | **Spawn Commit Agent** (not git directly) with `trigger_signal_type: 'review_merged'`, passing `payload.commit_message` verbatim + files to stage. Wait for `commit_complete`. Then route per `overall_status`: pass/pass_with_warnings → Execute-Control next batch; fail + `review_iterations_per_batch` remaining → Planning replan; fail + exhausted → spawn Degradation Agent. |
 | `stage_exhausted` | Trigger degradation for this scope. Log. Continue other scopes if any. |
-| `all_complete` | Generate delivery bundle. Write `run_end` with `exit_reason: "all_complete"`. Kernel exits. |
+| `all_complete` | **Spawn Finalization Agent** with plan summary. Wait for `delivery_bundle_ready`. Then write `run_end` ledger entry and exit. |
+| `commit_complete` | Append `commit` ledger entry from payload. Route per `trigger_signal_type`: `review_merged` → continue original review routing (next stage per verdict); `degradation_spec_written` → continue dispatch loop (typically Execute-Control for next batch). On `success: false`, log `anomaly` (severity high) but continue the routing path. |
+| `degradation_spec_written` | **Spawn Commit Agent** with `trigger_signal_type: 'degradation_spec_written'`, passing `payload.commit_message` and `payload.files_to_stage` verbatim. Wait for `commit_complete`. |
+| `delivery_bundle_ready` | Append `run_end` ledger entry with `exit_reason: "all_complete"`. Surface `bundle_path` to user. Exit dispatch loop. |
 
 ### The batch-settled rule
 

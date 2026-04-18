@@ -42,9 +42,12 @@ Expected output of the diff: **empty**. If non-empty, the routing table is incom
 | `execute_failed` | ✅ | Mark task as failed in `stage-state.current_batch.failed_tasks`. Check if batch settled (all tasks complete or failed). If not settled → wait. If settled → see "batch settled" rule below. |
 | `review_dispatch` | ✅ | Spawn N review sub-agents per the dispatch list. |
 | `review_sub_verdict` | ✅ | Check if all review sub-agents in this batch are done. If yes → spawn Merge. If no → wait. |
-| `review_merged` | ✅ | **Always commit to git first using `payload.commit_message`** (hard rule). Then route: `pass`/`pass_with_warnings` → Execute-Control next batch; `fail` + `review_iterations_per_batch` remaining → Planning replan; `fail` + `review_iterations_per_batch` exhausted → degrade. |
+| `review_merged` | ✅ | **Spawn Commit Agent** with `trigger_signal_type: 'review_merged'`, passing `payload.commit_message` verbatim and files to stage. Wait for `commit_complete`. Then route per `overall_status`: pass/pass_with_warnings → Execute-Control next batch; fail + `review_iterations_per_batch` remaining → Planning replan; fail + exhausted → spawn Degradation Agent. |
 | `stage_exhausted` | ✅ | Trigger degradation for this scope. Log. Continue other scopes if any. |
-| `all_complete` | ✅ | Generate delivery bundle. Write `run_end` with `exit_reason: "all_complete"`. Kernel exits. |
+| `all_complete` | ✅ | **Spawn Finalization Agent** with plan summary. Wait for `delivery_bundle_ready`. Then write `run_end` ledger entry and exit. |
+| `commit_complete` | ✅ | Append `commit` ledger entry from payload. Route per `trigger_signal_type`: review_merged → continue review routing; degradation_spec_written → continue dispatch loop. On `success: false`, log anomaly severity high but continue routing. |
+| `degradation_spec_written` | ✅ | Spawn Commit Agent with `trigger_signal_type: 'degradation_spec_written'`. Wait for `commit_complete`. |
+| `delivery_bundle_ready` | ✅ | Append `run_end` ledger entry. Surface `bundle_path` to user. Exit. |
 
 ### Batch-settled rule (shared by `execute_complete` and `execute_failed`)
 
@@ -52,7 +55,7 @@ Applies when all tasks in the current batch have returned either `execute_comple
 
 ## Coverage status
 
-- Contract declares: **17 signal types**
-- Main SKILL.md routing table must contain: **17 rows** (one per type)
+- Contract declares: **20 signal types**
+- Main SKILL.md routing table must contain: **20 rows** (one per type)
 
 After Task 2 of this plan is complete, the diff grep above must return empty.

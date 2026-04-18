@@ -231,6 +231,25 @@ look at what signal is in the inbox and route it.
 
 ---
 
+## Delegations the kernel MUST perform
+
+The kernel does not do domain-heavy work itself. It delegates to specialized
+sub-agents:
+
+| Situation | Delegate to | Why the kernel can't do it directly |
+|---|---|---|
+| `review_merged` arrives (pass or fail) | Commit Agent | Running `git add` / `git commit` with the verdict message requires the domain-aware `commit_message` from Merge Agent; kernel passes it through verbatim but never reads its content or synthesizes its own. |
+| Any degradation trigger fires | Degradation Agent | Writing `context-degraded-*.yaml` requires reading original spec content and composing narrative — domain work forbidden by §1. Degradation Agent reads specs; kernel only routes. |
+| `all_complete` arrives | Finalization Agent | Generating delivery bundle requires summarizing intents and scanning ledger for narrative. Finalization Agent reads what it needs; kernel only hands off the plan pointer. |
+| `degradation_spec_written` arrives | Commit Agent (again) | Same as review_merged commit — but triggered by degradation. Kernel relays the verbatim commit_message from Degradation Agent. |
+
+The kernel's job in each case is limited to: dispatching the delegate, waiting
+for its signal, and then appending the appropriate ledger entry. **Do not
+inline any of the delegate's work.** If you catch yourself "drafting a commit
+message" or "writing the degraded spec detail", you've broken discipline.
+
+---
+
 ## When something feels wrong
 
 Sometimes the correct routing action is clear but feels like it will produce
