@@ -421,7 +421,90 @@ Main agent 并行 spawn 4 × Review Sub-Agent
 
 ---
 
-## 8. 一句话总结
+## 8. Runtime adaptation
+
+AI-Robin is a **runtime-agnostic natural-language program (NLP)**. The
+architecture assumes sub-agents communicate with the main agent via a
+shared inbox (`.ai-robin/dispatch/inbox/{signal-id}.json`). What "communicate
+via inbox" concretely means depends on the runtime.
+
+### Reference model (abstract)
+
+- Sub-agents run independently. When done, each writes a single JSON signal
+  file to `.ai-robin/dispatch/inbox/`.
+- The main agent's turn loop:
+  1. Read `stage-state.json`.
+  2. Check inbox for new signal files.
+  3. Process **one** signal (lexicographic order; see
+     `stdlib/kernel-discipline.md`).
+  4. Move signal file to `processed/`, append ledger, update state.
+- Parallel sub-agents means: N sub-agents each write one signal file; main
+  agent processes them across N turns, one signal at a time.
+
+### Claude Code mapping
+
+Claude Code's `Task` tool is **synchronous**: invoking it runs the sub-agent
+to completion and returns its result within the same parent turn. There is
+no asynchronous "sub-agent is still running in the background" state.
+
+In Claude Code, the reference model collapses cleanly:
+
+- Sub-agent work: main agent invokes `Task`. The sub-agent's SKILL file
+  instructs it to write its final signal to
+  `.ai-robin/dispatch/inbox/{signal-id}.json` just before returning.
+- "Checking inbox": main agent reads `.ai-robin/dispatch/inbox/` with
+  `Glob`/`Read` **within the same turn** that the sub-agent returned.
+- Parallel dispatch: main agent issues N `Task` tool calls in **one
+  message** (Claude Code runs them concurrently). Each sub-agent writes its
+  own signal file. After all N return, main agent sees N signals in inbox.
+- Signal ordering: the signal files are all present when main agent reads
+  them; lexicographic sort on signal_id gives deterministic processing
+  order.
+
+The file-based inbox is still the authoritative communication channel even
+in Claude Code. Sub-agents must not return structured data "through the
+Task return value" alone — the signal file is the source of truth for audit.
+
+### Other runtimes
+
+- **Truly async runtime (e.g., a custom orchestration loop)**: inbox polling
+  fires between real asynchronous work. `active_invocations` tracks
+  in-flight agents accurately. Signal ordering rule still applies.
+- **Single-threaded runtime without parallelism**: spawn "N parallel
+  agents" degrades gracefully to sequential execution. Same inbox, same
+  routing, just slower.
+
+### Invariants that hold across all runtimes
+
+- One signal per sub-agent invocation.
+- Signals are files in `.ai-robin/dispatch/inbox/` until processed.
+- Main agent never reads sub-agent tool-return values as the authoritative
+  source of signal content — only the inbox file.
+- Main agent processes one signal per routing action (see
+  `kernel-discipline.md` § 3), regardless of how many are present.
+
+If a runtime cannot satisfy these invariants (e.g., has no filesystem),
+an adapter layer is required. AI-Robin does not ship such adapters — they
+are out of scope for the v1 NLP.
+
+### Sub-skill invocation and activation
+
+AI-Robin's sub-skills (`consumer/SKILL.md`, `planning/SKILL.md`, etc.)
+must **not** be registered as top-level user-invocable skills. Only the
+root `ai-robin/SKILL.md` has YAML frontmatter; all sub-skill files omit
+it so the main agent can load them via the `Read` tool without the
+runtime treating them as independent skills discoverable from user intent.
+
+If a runtime's skill-discovery mechanism does not recognize the
+frontmatter-less convention, the sub-skill files should be renamed
+(e.g., to `AGENT.md`) as a runtime-specific adaptation. The root
+`ai-robin/SKILL.md`'s internal references can then be updated to the
+new filename. This is purely a runtime-adapter concern, not a change to
+the abstract design.
+
+---
+
+## 9. 一句话总结
 
 > **AI-Robin 是一个 NLP runtime: Consumer Agent 是唯一的 human interface;
 > Main agent 是永远 light 的 kernel; Planning/Execute-Control/Execute/Review
