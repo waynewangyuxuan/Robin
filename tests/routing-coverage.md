@@ -1,0 +1,61 @@
+# Routing Coverage Audit
+
+This document lists every `signal_type` defined in `contracts/dispatch-signal.md` and the routing action the kernel (`skills/robin-kernel/SKILL.md`) must take on it. It is the source of truth for routing completeness — every signal type declared in the contract MUST appear in the kernel's routing table.
+
+## How to verify
+
+Run these greps from the repo root:
+
+```bash
+# List signal types declared in contract
+grep -E '^#### `[a-z_]+`' contracts/dispatch-signal.md | sed -E 's/^#### `([a-z_]+)`.*/\1/' | sort -u
+
+# List signal types covered in the kernel's routing table.
+# NOTE: the sed regex MUST anchor at the line start (^\| `) — a greedy
+# `.*` pattern would pick up backtick-wrapped identifiers later on each
+# row (e.g. `run_end`, `payload.commit_message`) and produce false gaps.
+grep -E '^\| `[a-z_]+` \|' skills/robin-kernel/SKILL.md | sed -E 's/^\| `([a-z_]+)` \|.*/\1/' | sort -u
+
+# Diff: contract signals NOT in routing table
+comm -23 \
+  <(grep -E '^#### `[a-z_]+`' contracts/dispatch-signal.md | sed -E 's/^#### `([a-z_]+)`.*/\1/' | sort -u) \
+  <(grep -E '^\| `[a-z_]+` \|' skills/robin-kernel/SKILL.md | sed -E 's/^\| `([a-z_]+)` \|.*/\1/' | sort -u)
+```
+
+Expected output of the diff: **empty**. If non-empty, the routing table is incomplete.
+
+## Signal → routing contract
+
+| signal_type | Defined in contract | Routing action (authoritative) |
+|---|---|---|
+| `intake_complete` | ✅ | Update stage-state → "planning". Spawn Planning Agent. |
+| `intake_blocked` | ✅ | **Exit run.** Write `run_end` ledger entry with `exit_reason: "intake_blocked"`. Surface `partial_spec_path` and `reason` to user. Do NOT spawn anything further. |
+| `planning_complete` | ✅ | Update stage-state → "scheduler". Spawn Scheduler Agent. |
+| `planning_needs_research` | ✅ | Spawn Research Agent with the question from signal. Keep stage at "planning". |
+| `planning_needs_sub_planning` | ✅ | Spawn sub-Planning Agent for the specified sub-scope. Keep stage at "planning". |
+| `planning_replan_exhausted` | ✅ | Trigger degradation for the `unresolvable_issues` list. Preserve `partial_plan_ref`. Continue other scopes via Scheduler. |
+| `research_complete` | ✅ | Re-spawn Planning Agent with research findings attached. |
+| `research_inconclusive` | ✅ | Log `anomaly` entry (severity: low). Re-spawn the requesting stage (usually Planning) with `best_guess` attached AND `confidence < 0.5` flag so the requester records any derived decision with low confidence. Does NOT consume degradation budget by itself. |
+| `dispatch_batch` | ✅ | Read batch spec from signal. Spawn N Execute Agents (parallel or sequential per `concurrency_mode`). |
+| `dispatch_exhausted` | ✅ | Route to Planning for replan. Consumes `replan_iterations` budget. If already exhausted → trigger degradation for all remaining pending milestones. |
+| `execute_complete` | ✅ | Mark task as complete in `stage-state.current_batch`. Check if batch settled (all tasks complete or failed). If not settled → wait. If settled → see "batch settled" rule below. |
+| `execute_failed` | ✅ | Mark task as failed in `stage-state.current_batch.failed_tasks`. Check if batch settled (all tasks complete or failed). If not settled → wait. If settled → see "batch settled" rule below. |
+| `review_dispatch` | ✅ | Spawn N review sub-agents per the dispatch list. |
+| `review_sub_verdict` | ✅ | Check if all review sub-agents in this batch are done. If yes → spawn Merge. If no → wait. |
+| `review_merged` | ✅ | **Spawn Commit Agent** with `trigger_signal_type: 'review_merged'`, passing `payload.commit_message` verbatim and files to stage. Wait for `commit_complete`. Then route per `overall_status`: pass/pass_with_warnings → Scheduler next batch; fail + `review_iterations_per_batch` remaining → Planning replan; fail + exhausted → spawn Degradation Agent. |
+| `stage_exhausted` | ✅ | Trigger degradation for this scope. Log. Continue other scopes if any. |
+| `all_complete` | ✅ | **Spawn Finalization Agent** with plan summary. Wait for `delivery_bundle_ready`. Then write `run_end` ledger entry and exit. |
+| `commit_complete` | ✅ | Append `commit` ledger entry from payload. Route per `trigger_signal_type`: review_merged → continue review routing; degradation_spec_written → continue dispatch loop. On `success: false`, log anomaly severity high but continue routing. |
+| `degradation_spec_written` | ✅ | Spawn Commit Agent with `trigger_signal_type: 'degradation_spec_written'`. Wait for `commit_complete`. |
+| `delivery_bundle_ready` | ✅ | Append `run_end` ledger entry. Surface `bundle_path` to user. Exit. |
+
+### Batch-settled rule (shared by `execute_complete` and `execute_failed`)
+
+Applies when all tasks in the current batch have returned either `execute_complete` or `execute_failed`. On settlement, **always spawn Review-Plan** with the full batch input (both `execute_complete` and `execute_failed` task artifacts; `failed_tasks[]` listed separately so playbooks know which scopes are partial). Per `contracts/dispatch-signal.md`, review runs even when every task failed — partial artifacts and the failure itself still need verdict logging for audit integrity. Review-Plan may dispatch zero playbooks if there is nothing reviewable, producing a minimal verdict that records the failure.
+
+## Coverage status
+
+- Contract declares: **20 signal types**
+- Main SKILL.md routing table must contain: **20 rows** (one per type)
+
+After Task 2 of this plan is complete, the diff grep above must return empty.

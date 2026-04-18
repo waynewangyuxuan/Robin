@@ -1,0 +1,31 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Task",
+        "command": "python3 $CLAUDE_PLUGIN_ROOT/hooks/pre_task.py"
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Task",
+        "command": "python3 $CLAUDE_PLUGIN_ROOT/hooks/post_task.py"
+      }
+    ],
+    "SessionStart": [
+      {
+        "command": "python3 $CLAUDE_PLUGIN_ROOT/hooks/session_start.py"
+      }
+    ],
+    "Stop": [
+      {
+        "command": "python3 $CLAUDE_PLUGIN_ROOT/hooks/stop.py"
+      }
+    ],
+    "SubagentStop": [
+      {
+        "command": "python3 $CLAUDE_PLUGIN_ROOT/hooks/subagent_stop.py"
+      }
+    ]
+  }
+}
