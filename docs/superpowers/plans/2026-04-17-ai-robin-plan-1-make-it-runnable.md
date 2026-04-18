@@ -1440,8 +1440,13 @@ scenario, that's a regression and the edit must be revised."
 Run these checks from `/Users/waynewang/AI-Robin-Skill/ai-robin`:
 
 ```bash
-# 1. Every signal type has a routing entry
-comm -23 <(grep -E '^#### `[a-z_]+`' contracts/dispatch-signal.md | sed -E 's/.*`([a-z_]+)`.*/\1/' | sort -u) <(grep -E '^\| `[a-z_]+` \|' SKILL.md | sed -E 's/.*`([a-z_]+)`.*/\1/' | sort -u)
+# 1. Every signal type has a routing entry.
+# IMPORTANT: both sed regexes must anchor at line start. A greedy
+# `.*backtick(x)backtick.*` picks up the LAST backtick-wrapped token on each
+# SKILL.md row (e.g. `payload.commit_message`, `run_end`), producing false gaps.
+comm -23 \
+  <(grep -E '^#### `[a-z_]+`' contracts/dispatch-signal.md | sed -E 's/^#### `([a-z_]+)`.*/\1/' | sort -u) \
+  <(grep -E '^\| `[a-z_]+` \|' SKILL.md | sed -E 's/^\| `([a-z_]+)` \|.*/\1/' | sort -u)
 ```
 Expected: empty.
 
@@ -1458,29 +1463,70 @@ head -1 SKILL.md consumer/SKILL.md planning/SKILL.md execute-control/SKILL.md ex
 Expected: only the root `SKILL.md` starts with `---`; every other starts with `# <Agent Name>`.
 
 ```bash
-# 4. Runtime adaptation section exists
-grep -c '^## Runtime adaptation' DESIGN.md
+# 4. Runtime adaptation section exists (heading may be numbered, e.g. `## 8. Runtime adaptation`,
+# to match existing DESIGN.md convention — Task 9 implementer's judgment call, approved).
+grep -c 'Runtime adaptation' DESIGN.md
 ```
-Expected: `1`.
+Expected: `1` or more.
 
 ```bash
-# 5. Signal ordering rule present
-grep -l 'lexicographic' stdlib/kernel-discipline.md contracts/dispatch-signal.md
+# 5. Signal ordering rule present. The word "lexicographic" appears in kernel-discipline.md;
+# dispatch-signal.md references the rule via heading delegation (no literal copy) so both files
+# participate in the rule chain without text duplication.
+grep -l 'lexicographic' stdlib/kernel-discipline.md
+grep -l 'Signal ordering when inbox has multiple files' contracts/dispatch-signal.md
 ```
-Expected: both files listed.
+Expected: both grep commands list their respective file.
 
 ```bash
-# 6. All 5 scenarios have a "Status: Terminates cleanly" line
+# 6. Every scenario in the e2e trace terminates cleanly.
+# Scenarios grew from 5 to 9 during execution (to cover all 17 signal types explicitly
+# per Task 10's code review); expected count is the scenario count.
 grep -c 'Terminates cleanly' tests/end-to-end-trace.md
 ```
-Expected: `5`.
+Expected: 9 (1 + 2a + 2b + 3 + 4 + 5 + 6 + 7 + 8).
 
-If all six checks pass, Plan 1 is complete. The ai-robin skill is now
+```bash
+# 7. e2e trace exercises every declared signal type explicitly (not just mentions in coverage notes).
+# Run as a per-signal check; every row must say "covered".
+for sig in $(grep -E '^#### `[a-z_]+`' contracts/dispatch-signal.md | sed -E 's/^#### `([a-z_]+)`.*/\1/' | sort -u); do
+  grep -qE "\`$sig\`" tests/end-to-end-trace.md && echo "$sig: covered" || echo "$sig: MISSING"
+done
+```
+Expected: every signal prints "covered".
+
+If all seven checks pass, Plan 1 is complete. The ai-robin skill is now
 runnable end-to-end: every signal routes deterministically, commit
 messages flow through a defined pipeline, sub-skills no longer
 double-register as user-invocable skills, signal ordering is
 deterministic across runtimes, and the runtime-adaptation contract is
 documented.
+
+## Execution notes (drift from the plan-authored spec)
+
+Plan 1 was authored to specify 10 tasks with exact edit content. During execution, code review surfaced issues that required small deviations from the authored spec. Capturing them here so future re-runs of Plan 1 apply them inline instead of discovering them again:
+
+1. **Task 2 — batch-settled rule now "always spawns Review-Plan".**
+   The original spec said "all failed → skip review entirely". Code review caught that this directly contradicts `contracts/dispatch-signal.md` line 291-293 ("Do not skip review — even a failed task's partial output may need verdict logging"). Fix commit `0ed1b9c` revised both `SKILL.md` and `tests/routing-coverage.md` to always spawn Review-Plan on batch settlement. The spec text in Task 2 of this doc was NOT updated — re-executors should apply the corrected rule (see current `ai-robin/SKILL.md` batch-settled rule section).
+
+2. **Task 2 — `review_merged` row names `review_iterations_per_batch` explicitly.**
+   Original spec said "budget left" / "budget exhausted". Code review flagged ambiguity (could mean `replan_iterations`). Fix: both the `review_merged` row in `SKILL.md` and in `tests/routing-coverage.md` now reference `review_iterations_per_batch` by name.
+
+3. **Task 3 — `failed_tasks` is an equality view, not a subset; plus uniqueness and `settled_at`/`status` bi-conditional.**
+   Original spec used `⊆` in the invariants. Code review caught this as a dual-write hazard. Fix commit `83ccedc` tightened the invariants to equality, added uniqueness rules for `tasks[].task_id` and `failed_tasks[]`, added the `settled_at` bi-conditional, added a "Canonical update sequence" subsection, and switched the example to a mixed complete/failed batch. Commit `17fd931` also updated the inline schema comment from "subset of tasks[]" to the equality-view phrasing.
+
+4. **Task 5 — header-shape exception for `review(failed):` / `review(anomaly):`.**
+   Original spec's Format block prescribed `<type>(<scope>): ... (batch-<N>)`, but the Fail example broke that shape. Fix commit `949e777` added a "Header exception for failed/anomaly iterations" bullet explicitly documenting the alternative `review(failed): batch-<N> iteration <N> — ...` shape.
+
+5. **Task 9 — heading numbered `## 8. Runtime adaptation` (not `## Runtime adaptation`).**
+   DESIGN.md uses a numbered-section convention (`## 1. Thesis` … `## 7. 开放问题` … `## 9. 一句话总结`, existing section 8 was "一句话总结" which got renumbered to 9). Implementer maintained the convention rather than introducing an unnumbered outlier. Approved as a reasonable judgment call.
+
+6. **Task 10 — 9 scenarios instead of 5.**
+   Original spec had 5 scenarios with a "coverage check" section noting some signals weren't explicitly walked through. Code review flagged this as non-compliant (plan required every signal type appear in at least one scenario). Fix commit `8a763ff` split Scenario 2 into 2a (research_complete happy path) and 2b (research_inconclusive), added Scenario 7 (sub-planning recursion covering `planning_needs_sub_planning`), and Scenario 8 (Execute-Control dispatch_exhausted → replan/degrade covering `dispatch_exhausted`). All 17 signal types now have explicit coverage.
+
+7. **Routing-coverage audit grep regex** — fixed after final verification (commit `bb86315`). The original sed pattern was greedy and produced false-positive "missing signal" output on current SKILL.md rows. The corrected anchored regex is now documented in `tests/routing-coverage.md` and in Check #1 above.
+
+Anyone re-executing Plan 1 from scratch should apply these corrections inline when following the spec.
 
 ## What Plan 1 does NOT fix (intentionally deferred to later plans)
 

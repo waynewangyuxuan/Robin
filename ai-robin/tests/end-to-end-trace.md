@@ -134,8 +134,9 @@ is silently skipped; every failure is verdict-logged per the
    artifacts exist.
 4. If zero playbooks dispatched: `review_dispatch.playbooks = []`.
    Kernel treats as the "zero sub-verdicts" path: Merge is still spawned
-   per `review/merge/SKILL.md` line 77. Merge produces the fallback
-   `review(anomaly):` verdict with `overall_status: fail`.
+   per `review/merge/SKILL.md` § "Error handling" ("Zero sub-verdicts
+   present" row). Merge produces the fallback `review(anomaly):`
+   verdict with `overall_status: fail`.
 5. If playbooks dispatched over partial artifacts: normal
    sub-verdict → Merge flow.
 6. Kernel commits verbatim using `payload.commit_message` (either a
