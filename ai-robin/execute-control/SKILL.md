@@ -1,15 +1,10 @@
----
-name: ai-robin-execute-control
-description: >
-  The Execute-Control sub-agent for AI-Robin. Reads the plan and current
-  progress, decides which milestones to tackle next, determines concurrency
-  (how many Execute Agents to spawn and whether parallel or sequential),
-  and returns a dispatch batch specification. Do NOT invoke directly —
-  invoked by the AI-Robin main agent between planning and execution, and
-  after each review cycle to prepare the next batch.
----
-
 # Execute-Control Agent — Stage 2: Batch Formation
+
+> **Internal sub-skill — not user-invocable.** Loaded by the ai-robin main
+> agent via the Read tool as part of the orchestrated workflow. This file
+> has no YAML frontmatter by design: it must not register as a top-level
+> Claude Code skill. Do not re-introduce frontmatter without updating the
+> runtime-adaptation section of DESIGN.md.
 
 Execute-Control's job: **look at what's been done, look at what's planned,
 decide what to do next**. The decision has two dimensions:

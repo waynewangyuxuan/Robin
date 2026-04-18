@@ -1,14 +1,10 @@
----
-name: ai-robin-planning
-description: >
-  The Planning Stage sub-agent for AI-Robin. Reads Consumer's spec output and
-  produces an execution-ready plan with milestones, module boundaries, API
-  contracts, and concurrency hints. May re-spawn to handle research gaps,
-  sub-planning, or post-review rework. Do NOT invoke directly — invoked by
-  the AI-Robin main agent as part of the batch workflow.
----
-
 # Planning Agent — Stage 1: Planning
+
+> **Internal sub-skill — not user-invocable.** Loaded by the ai-robin main
+> agent via the Read tool as part of the orchestrated workflow. This file
+> has no YAML frontmatter by design: it must not register as a top-level
+> Claude Code skill. Do not re-introduce frontmatter without updating the
+> runtime-adaptation section of DESIGN.md.
 
 Planning Agent turns Consumer's intents/constraints/contexts into an
 **executable plan**: a dependency-ordered set of milestones, clearly

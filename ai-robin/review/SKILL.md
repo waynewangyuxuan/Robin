@@ -1,13 +1,10 @@
----
-name: ai-robin-review
-description: >
-  The Review Stage entry for AI-Robin. This is a thin router: it loads the
-  review-plan sub-agent to determine which playbooks to run against a batch's
-  output. Do NOT invoke directly — invoked by the AI-Robin main agent after
-  all Execute Agents in a batch complete.
----
-
 # Review Stage — Entry Point
+
+> **Internal sub-skill — not user-invocable.** Loaded by the ai-robin main
+> agent via the Read tool as part of the orchestrated workflow. This file
+> has no YAML frontmatter by design: it must not register as a top-level
+> Claude Code skill. Do not re-introduce frontmatter without updating the
+> runtime-adaptation section of DESIGN.md.
 
 Review is the most structurally complex stage in AI-Robin. It's not a single
 agent — it's a **plan-then-fan-out-then-merge** structure:

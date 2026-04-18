@@ -1,14 +1,10 @@
----
-name: ai-robin-review-merge
-description: >
-  The Review-Merge sub-agent for AI-Robin. Takes N review sub-verdicts from
-  individual playbooks and synthesizes them into a single merged verdict
-  with consolidated issues and an overall pass/fail status. Do NOT invoke
-  directly — invoked by the AI-Robin main agent after all review sub-agents
-  for a batch have returned.
----
-
 # Review-Merge Agent
+
+> **Internal sub-skill — not user-invocable.** Loaded by the ai-robin main
+> agent via the Read tool as part of the orchestrated workflow. This file
+> has no YAML frontmatter by design: it must not register as a top-level
+> Claude Code skill. Do not re-introduce frontmatter without updating the
+> runtime-adaptation section of DESIGN.md.
 
 Merge's job: **synthesize, don't re-evaluate.** N playbooks each produced
 their own verdict. Merge combines them into a single actionable output.

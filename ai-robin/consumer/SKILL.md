@@ -1,14 +1,10 @@
----
-name: ai-robin-consumer
-description: >
-  The Intake Stage sub-agent for AI-Robin. Reads raw user input (chat messages,
-  pasted docs, loose requirements), drives a bounded interaction to surface
-  decisions and fill gaps, and produces a planning-ready Feature Room spec set.
-  This is the ONLY stage where AI-Robin interacts with the user. Do NOT invoke
-  directly — invoked by the AI-Robin main agent at run start.
----
-
 # Consumer Agent — Stage 0: Intake
+
+> **Internal sub-skill — not user-invocable.** Loaded by the ai-robin main
+> agent via the Read tool as part of the orchestrated workflow. This file
+> has no YAML frontmatter by design: it must not register as a top-level
+> Claude Code skill. Do not re-introduce frontmatter without updating the
+> runtime-adaptation section of DESIGN.md.
 
 Consumer Agent is the **single human-facing stage** of an AI-Robin run.
 Everything AI-Robin does after this stage is based on the specs Consumer

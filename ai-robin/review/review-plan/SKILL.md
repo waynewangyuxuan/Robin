@@ -1,14 +1,10 @@
----
-name: ai-robin-review-plan
-description: >
-  The Review-Plan sub-agent for AI-Robin. Given a batch's change artifacts,
-  determines which domain-specific review playbooks to run, and the scope
-  of each. Returns a review_dispatch signal instructing main agent which
-  sub-agents to spawn in parallel. Do NOT invoke directly — invoked by
-  the AI-Robin main agent at the start of every review stage.
----
-
 # Review-Plan Agent
+
+> **Internal sub-skill — not user-invocable.** Loaded by the ai-robin main
+> agent via the Read tool as part of the orchestrated workflow. This file
+> has no YAML frontmatter by design: it must not register as a top-level
+> Claude Code skill. Do not re-introduce frontmatter without updating the
+> runtime-adaptation section of DESIGN.md.
 
 Review-Plan's job: **"Given what just changed, which reviewers need to look
 at it?"**

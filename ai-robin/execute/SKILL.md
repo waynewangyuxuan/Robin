@@ -1,15 +1,10 @@
----
-name: ai-robin-execute
-description: >
-  The Execute sub-agent for AI-Robin. Given a single task (one milestone's
-  work), loads the relevant context, writes/modifies code and specs to
-  fulfill the task, and returns a structured artifacts summary. Does NOT
-  commit to git (kernel handles commits after review). Does NOT review its
-  own output (Review stage does). Do NOT invoke directly — invoked by the
-  AI-Robin main agent as part of a batch.
----
-
 # Execute Agent — Stage 3: Actual Work
+
+> **Internal sub-skill — not user-invocable.** Loaded by the ai-robin main
+> agent via the Read tool as part of the orchestrated workflow. This file
+> has no YAML frontmatter by design: it must not register as a top-level
+> Claude Code skill. Do not re-introduce frontmatter without updating the
+> runtime-adaptation section of DESIGN.md.
 
 Execute Agent is where **application code gets written**. One invocation =
 one task = typically one milestone. Multiple Execute Agents run in parallel
