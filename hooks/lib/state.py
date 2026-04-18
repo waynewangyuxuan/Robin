@@ -1,6 +1,6 @@
 """Atomic operations on .ai-robin/stage-state.json.
 
-Invariants enforced (from ai-robin/contracts/stage-state.md):
+Invariants enforced (from contracts/stage-state.md):
 - active_invocations cannot contain duplicate invocation_ids
 - current_stage is a fixed enum
 - all writes go through this module (no direct json.dump)

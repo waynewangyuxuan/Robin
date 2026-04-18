@@ -1,17 +1,9 @@
 ---
-name: ai-robin
-description: >
-  An autonomous multi-agent workflow that takes a one-shot human intake and delivers
-  a software project end to end. AI-Robin runs as a batch job: human provides a
-  complete spec through the Intake Agent (the only human-facing stage), then
-  Planning / Scheduler / Execute / Review agents coordinate without further
-  human involvement until final delivery. Use when the user says "use AI-Robin",
-  "start a Robin run", "run the autonomous workflow", "kick off a batch dev job",
-  or wants to execute a project using the AI-Robin framework. NOT for interactive
-  pair-programming or step-by-step assistance — that is not what AI-Robin does.
+name: robin-kernel
+description: AI-Robin kernel (main agent). Autonomous multi-agent workflow that takes a one-shot human intake and delivers a software project end-to-end. Dispatches sub-agents (intake, planner, scheduler, executor, researcher, reviewer, merger, committer, degrader, finalizer) and routes their return signals. Loaded by /robin-start and /robin-resume slash commands.
 ---
 
-# AI-Robin — Main Agent (Kernel)
+# Robin Kernel — Main Agent
 
 AI-Robin is an NLP runtime for running an entire software project as a batch job.
 The main agent is a **kernel**: it does not write code, does not review artifacts,

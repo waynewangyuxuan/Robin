@@ -9,4 +9,4 @@ You are resuming an AI-Robin run.
 
 **If the check passes:**
 
-Load `ai-robin/SKILL.md` and follow its resume protocol from the "Initialization: the first turn" section — read stage-state, identify where the run was when it stopped, handle any active invocations, and continue the dispatch loop.
+Load `skills/robin-kernel/SKILL.md` and follow its resume protocol from the "Initialization: the first turn" section — read stage-state, identify where the run was when it stopped, handle any active invocations, and continue the dispatch loop.

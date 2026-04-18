@@ -1,7 +1,7 @@
 """Atomic ledger append for .ai-robin/ledger.jsonl.
 
 Rules (from skills/robin-kernel/discipline.md §4 and
-ai-robin/contracts/session-ledger.md):
+contracts/session-ledger.md):
 - entry_id is monotonically increasing starting at 1
 - timestamps are ISO 8601
 - append is atomic per call (single fsync'd line write)

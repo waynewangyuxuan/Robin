@@ -10,7 +10,7 @@ You are about to begin a new AI-Robin run.
 
 **If both checks pass:**
 
-Load `ai-robin/SKILL.md` (the kernel entrypoint, located inside this plugin's sibling `ai-robin/` skill directory) and follow its initialization instructions: create `.ai-robin/` directory structure, initialize `stage-state.json` with `stage: "intake"`, and spawn Intake Agent with the user's brief as `user_raw_input`.
+Load `skills/robin-kernel/SKILL.md` (the kernel entrypoint) and follow its initialization instructions: create `.ai-robin/` directory structure, initialize `stage-state.json` with `stage: "intake"`, and spawn Intake Agent with the user's brief as `user_raw_input`.
 
 **User's project brief:** $ARGUMENTS
 

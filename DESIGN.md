@@ -490,14 +490,14 @@ are out of scope for the v1 NLP.
 
 AI-Robin's sub-skills (`skills/robin-intake/SKILL.md`, `skills/robin-planner/SKILL.md`, etc.)
 must **not** be registered as top-level user-invocable skills. Only the
-root `ai-robin/SKILL.md` has YAML frontmatter; all sub-skill files omit
+root `skills/robin-kernel/SKILL.md` has YAML frontmatter; all sub-skill files omit
 it so the main agent can load them via the `Read` tool without the
 runtime treating them as independent skills discoverable from user intent.
 
 If a runtime's skill-discovery mechanism does not recognize the
 frontmatter-less convention, the sub-skill files should be renamed
 (e.g., to `AGENT.md`) as a runtime-specific adaptation. The root
-`ai-robin/SKILL.md`'s internal references can then be updated to the
+`skills/robin-kernel/SKILL.md`'s internal references can then be updated to the
 new filename. This is purely a runtime-adapter concern, not a change to
 the abstract design.
 

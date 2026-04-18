@@ -6,7 +6,7 @@ the contract between the runtime-agnostic NLP and its first runtime adapter.
 
 ## What the plugin preserves (MUST be invariant)
 
-Per `ai-robin/DESIGN.md §8`:
+Per `DESIGN.md §8`:
 
 1. **File-based signal inbox is authoritative.** Plugin hooks read from and
    write to `.ai-robin/dispatch/inbox/` — they do not bypass it. Task tool
@@ -79,13 +79,13 @@ corresponding to a specific signal-handling path:
 | 0.1.x (pre-plugin) | N/A |
 | 0.2.x | 0.2.x |
 
-Plugin version must match minor version of `ai-robin/SKILL.md` frontmatter
+Plugin version must match minor version of `skills/robin-kernel/SKILL.md` frontmatter
 (when versioned).
 
 ## Test coverage today
 
 - **Structural tests** (pass):
-  - `ai-robin/tests/routing-coverage.md` — 20/20 signal coverage in routing
+  - `tests/routing-coverage.md` — 20/20 signal coverage in routing
     table (grep-diff empty)
   - Broken-refs grep — 0 unacceptable missing references
 - **Hook unit tests** (pass):

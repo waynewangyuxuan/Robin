@@ -14,23 +14,23 @@
 
 Files modified by this plan (with responsibility of each change):
 
-- **`ai-robin/SKILL.md`** — Main kernel routing table. Add 5 missing signal rows. Add reference to signal-ordering rule.
-- **`ai-robin/contracts/dispatch-signal.md`** — Add `commit_message` field to `review_merged` payload. Document ordering rule in validation section.
-- **`ai-robin/contracts/stage-state.md`** — Add `failed_tasks[]` field to `current_batch` (needed to track partial-failure state for `execute_failed` routing).
-- **`ai-robin/contracts/session-ledger.md`** — Update `commit` entry note to clarify `commit_message` comes from `review_merged` signal (not kernel-composed).
-- **`ai-robin/stdlib/kernel-discipline.md`** — Add signal-ordering rule to section "One routing per turn". Add pointer to runtime-adaptation section.
+- **`skills/robin-kernel/SKILL.md`** — Main kernel routing table. Add 5 missing signal rows. Add reference to signal-ordering rule.
+- **`contracts/dispatch-signal.md`** — Add `commit_message` field to `review_merged` payload. Document ordering rule in validation section.
+- **`contracts/stage-state.md`** — Add `failed_tasks[]` field to `current_batch` (needed to track partial-failure state for `execute_failed` routing).
+- **`contracts/session-ledger.md`** — Update `commit` entry note to clarify `commit_message` comes from `review_merged` signal (not kernel-composed).
+- **`stdlib/kernel-discipline.md`** — Add signal-ordering rule to section "One routing per turn". Add pointer to runtime-adaptation section.
 - **`ai-robin/review/merge/phases/phase-4-emit.md`** — Tell Merger Agent to compose and emit `commit_message`. Add method guidance.
 - **`ai-robin/consumer/SKILL.md`**, **`ai-robin/planning/SKILL.md`**, **`ai-robin/execute-control/SKILL.md`**, **`ai-robin/execute/SKILL.md`**, **`ai-robin/research/SKILL.md`**, **`ai-robin/review/SKILL.md`**, **`ai-robin/review/review-plan/SKILL.md`**, **`ai-robin/review/merge/SKILL.md`** — Strip activation frontmatter (`---` + `name:` + `description:` block) to prevent these sub-skills from being discovered as top-level user-invocable skills. Replace with a plain markdown "Internal sub-skill — not user-invocable" note.
-- **`ai-robin/DESIGN.md`** — Add "Runtime adaptation" section explaining that the `.ai-robin/dispatch/inbox/` pattern is a formal abstraction; runtime implementations may satisfy it differently (e.g., in Claude Code the sub-agent writes the file and the same turn's caller reads it).
-- **`ai-robin/tests/routing-coverage.md`** (NEW) — A verification artifact that lists every signal type defined by the contract and its expected routing. Used as a grep-able audit trail that the main SKILL.md routing table is complete.
-- **`ai-robin/tests/end-to-end-trace.md`** (NEW) — A narrative trace of five concrete scenarios (happy path, research inconclusive, execute failure, replan exhaustion, intake blocked) that walks the routing table to prove each scenario terminates deterministically.
+- **`DESIGN.md`** — Add "Runtime adaptation" section explaining that the `.ai-robin/dispatch/inbox/` pattern is a formal abstraction; runtime implementations may satisfy it differently (e.g., in Claude Code the sub-agent writes the file and the same turn's caller reads it).
+- **`tests/routing-coverage.md`** (NEW) — A verification artifact that lists every signal type defined by the contract and its expected routing. Used as a grep-able audit trail that the main SKILL.md routing table is complete.
+- **`tests/end-to-end-trace.md`** (NEW) — A narrative trace of five concrete scenarios (happy path, research inconclusive, execute failure, replan exhaustion, intake blocked) that walks the routing table to prove each scenario terminates deterministically.
 
 ---
 
 ## Task 1: Create routing coverage test that exposes the 5 gaps
 
 **Files:**
-- Create: `/Users/waynewang/AI-Robin-Skill/ai-robin/tests/routing-coverage.md`
+- Create: `/Users/waynewang/AI-Robin-Skill/tests/routing-coverage.md`
 
 This task is TDD step 1: write the failing audit document before touching SKILL.md. It enumerates every signal type from the contract and asserts a routing row exists in main SKILL.md. Initially 5 rows are expected to be missing — this proves the gap.
 
@@ -42,7 +42,7 @@ mkdir -p /Users/waynewang/AI-Robin-Skill/ai-robin/tests
 
 - [ ] **Step 2: Write the routing-coverage audit document**
 
-Create `/Users/waynewang/AI-Robin-Skill/ai-robin/tests/routing-coverage.md` with this exact content:
+Create `/Users/waynewang/AI-Robin-Skill/tests/routing-coverage.md` with this exact content:
 
 ````markdown
 # Routing Coverage Audit
@@ -126,7 +126,7 @@ If the output is exactly these 5 lines, the failing audit has proven the gap. If
 
 ```bash
 cd /Users/waynewang/AI-Robin-Skill
-git add ai-robin/tests/routing-coverage.md
+git add tests/routing-coverage.md
 git commit -m "test(ai-robin): add routing-coverage audit exposing 5 missing signal rows"
 ```
 
@@ -135,17 +135,17 @@ git commit -m "test(ai-robin): add routing-coverage audit exposing 5 missing sig
 ## Task 2: Close the 5 routing gaps in main SKILL.md
 
 **Files:**
-- Modify: `/Users/waynewang/AI-Robin-Skill/ai-robin/SKILL.md` (routing table, currently lines 92-105)
+- Modify: `/Users/waynewang/AI-Robin-Skill/skills/robin-kernel/SKILL.md` (routing table, currently lines 92-105)
 
 This task adds exactly 5 rows to the routing table so that every signal type declared in the contract has a routing action, as enumerated in the audit from Task 1.
 
 - [ ] **Step 1: Confirm the current table by reading lines 92-105**
 
-Read `/Users/waynewang/AI-Robin-Skill/ai-robin/SKILL.md` lines 92-105. Confirm the table currently has 12 rows: `intake_complete`, `planning_complete`, `planning_needs_research`, `planning_needs_sub_planning`, `research_complete`, `dispatch_batch`, `execute_complete`, `review_dispatch`, `review_sub_verdict`, `review_merged`, `stage_exhausted`, `all_complete`.
+Read `/Users/waynewang/AI-Robin-Skill/skills/robin-kernel/SKILL.md` lines 92-105. Confirm the table currently has 12 rows: `intake_complete`, `planning_complete`, `planning_needs_research`, `planning_needs_sub_planning`, `research_complete`, `dispatch_batch`, `execute_complete`, `review_dispatch`, `review_sub_verdict`, `review_merged`, `stage_exhausted`, `all_complete`.
 
 - [ ] **Step 2: Replace the routing table with a complete 17-row version**
 
-In `/Users/waynewang/AI-Robin-Skill/ai-robin/SKILL.md`, replace the exact block that currently reads:
+In `/Users/waynewang/AI-Robin-Skill/skills/robin-kernel/SKILL.md`, replace the exact block that currently reads:
 
 ```markdown
 | Signal type | Next action |
@@ -217,7 +217,7 @@ Expected: `17`
 
 ```bash
 cd /Users/waynewang/AI-Robin-Skill
-git add ai-robin/SKILL.md
+git add skills/robin-kernel/SKILL.md
 git commit -m "fix(ai-robin): add 5 missing routing entries to close kernel dead branches
 
 intake_blocked, execute_failed, dispatch_exhausted, research_inconclusive,
@@ -232,13 +232,13 @@ deterministic routing. Adds batch-settled rule for execute_complete/failed."
 ## Task 3: Extend stage-state contract to track per-task batch status
 
 **Files:**
-- Modify: `/Users/waynewang/AI-Robin-Skill/ai-robin/contracts/stage-state.md` (schema section, currently around line 44)
+- Modify: `/Users/waynewang/AI-Robin-Skill/contracts/stage-state.md` (schema section, currently around line 44)
 
 The new `execute_failed` routing requires the kernel to track failed tasks in the current batch. This task extends the state schema accordingly.
 
 - [ ] **Step 1: Confirm current `current_batch` schema**
 
-Read `/Users/waynewang/AI-Robin-Skill/ai-robin/contracts/stage-state.md` lines 44-49. Current shape:
+Read `/Users/waynewang/AI-Robin-Skill/contracts/stage-state.md` lines 44-49. Current shape:
 
 ```json
 "current_batch": {
@@ -251,7 +251,7 @@ Read `/Users/waynewang/AI-Robin-Skill/ai-robin/contracts/stage-state.md` lines 4
 
 - [ ] **Step 2: Replace the `current_batch` block with the extended version**
 
-In `/Users/waynewang/AI-Robin-Skill/ai-robin/contracts/stage-state.md`, replace the `"current_batch": { ... }` block (around lines 44-49) with:
+In `/Users/waynewang/AI-Robin-Skill/contracts/stage-state.md`, replace the `"current_batch": { ... }` block (around lines 44-49) with:
 
 ```json
 "current_batch": {
@@ -329,7 +329,7 @@ Expected: `2` (schema + example).
 
 ```bash
 cd /Users/waynewang/AI-Robin-Skill
-git add ai-robin/contracts/stage-state.md
+git add contracts/stage-state.md
 git commit -m "feat(ai-robin): extend stage-state.current_batch to track per-task settlement
 
 Adds tasks[] and failed_tasks[] fields so the kernel can apply the
@@ -342,13 +342,13 @@ execute_failed routing entry added in the previous commit."
 ## Task 4: Add commit_message field to review_merged signal contract
 
 **Files:**
-- Modify: `/Users/waynewang/AI-Robin-Skill/ai-robin/contracts/dispatch-signal.md` (review_merged section, currently lines 347-365; plus example section, currently lines 436-477)
+- Modify: `/Users/waynewang/AI-Robin-Skill/contracts/dispatch-signal.md` (review_merged section, currently lines 347-365; plus example section, currently lines 436-477)
 
 The `review_merged` payload currently carries no commit message, yet the kernel is required to produce a `commit_message` string for every commit ledger entry. This task adds the field so Merger Agent becomes the authoritative producer.
 
 - [ ] **Step 1: Update the `review_merged` payload schema**
 
-Read `/Users/waynewang/AI-Robin-Skill/ai-robin/contracts/dispatch-signal.md` lines 347-373. Find the `#### `review_merged`` heading and its payload block.
+Read `/Users/waynewang/AI-Robin-Skill/contracts/dispatch-signal.md` lines 347-373. Find the `#### `review_merged`` heading and its payload block.
 
 Replace the existing payload block (currently):
 
@@ -472,7 +472,7 @@ Expected: `5` or more (schema definition, action note, example in review_merged 
 
 ```bash
 cd /Users/waynewang/AI-Robin-Skill
-git add ai-robin/contracts/dispatch-signal.md
+git add contracts/dispatch-signal.md
 git commit -m "feat(ai-robin): add commit_message + summary to review_merged payload
 
 Closes the broken information pipeline where the kernel was required to
@@ -665,13 +665,13 @@ contract change that made commit_message a required field."
 ## Task 6: Update session-ledger contract to reference Merge-provided commit_message
 
 **Files:**
-- Modify: `/Users/waynewang/AI-Robin-Skill/ai-robin/contracts/session-ledger.md` (commit entry section, currently around lines 170-185)
+- Modify: `/Users/waynewang/AI-Robin-Skill/contracts/session-ledger.md` (commit entry section, currently around lines 170-185)
 
 Clarify that the `commit` ledger entry's `commit_message` field is copied verbatim from `review_merged.payload.commit_message` (or from the kernel-composed degradation-commit message for `[degradation]` commits).
 
 - [ ] **Step 1: Find the `### `commit`` entry section**
 
-Read `/Users/waynewang/AI-Robin-Skill/ai-robin/contracts/session-ledger.md` lines 170-185. Locate:
+Read `/Users/waynewang/AI-Robin-Skill/contracts/session-ledger.md` lines 170-185. Locate:
 
 ```markdown
 ### `commit`
@@ -694,7 +694,7 @@ Kernel performed a git commit (always after review).
 
 - [ ] **Step 2: Add a source-provenance note immediately after the JSON block**
 
-In `/Users/waynewang/AI-Robin-Skill/ai-robin/contracts/session-ledger.md`, directly after the `commit` entry's closing triple-backtick, insert this note before the next entry type (`### `user_message_received``):
+In `/Users/waynewang/AI-Robin-Skill/contracts/session-ledger.md`, directly after the `commit` entry's closing triple-backtick, insert this note before the next entry type (`### `user_message_received``):
 
 ```markdown
 The `commit_message` field is copied verbatim from the source:
@@ -717,7 +717,7 @@ Expected: shows the 3-line note just added.
 
 ```bash
 cd /Users/waynewang/AI-Robin-Skill
-git add ai-robin/contracts/session-ledger.md
+git add contracts/session-ledger.md
 git commit -m "docs(ai-robin): document commit_message provenance in ledger contract
 
 Makes explicit that review-commit messages come from review_merged.payload
@@ -730,14 +730,14 @@ other path produces commit messages, closing the audit-trail ambiguity."
 ## Task 7: Define deterministic signal-ordering rule in kernel-discipline
 
 **Files:**
-- Modify: `/Users/waynewang/AI-Robin-Skill/ai-robin/stdlib/kernel-discipline.md` (section "3. One routing per turn", currently around lines 80-94)
-- Modify: `/Users/waynewang/AI-Robin-Skill/ai-robin/contracts/dispatch-signal.md` (validation rules section, currently around lines 417-426)
+- Modify: `/Users/waynewang/AI-Robin-Skill/stdlib/kernel-discipline.md` (section "3. One routing per turn", currently around lines 80-94)
+- Modify: `/Users/waynewang/AI-Robin-Skill/contracts/dispatch-signal.md` (validation rules section, currently around lines 417-426)
 
 When multiple signals accumulate in `.ai-robin/dispatch/inbox/`, the kernel must process them in a defined order for audit determinism.
 
 - [ ] **Step 1: Update kernel-discipline rule #3**
 
-Read `/Users/waynewang/AI-Robin-Skill/ai-robin/stdlib/kernel-discipline.md` lines 80-94. Locate section `### 3. One routing per turn` and the paragraph that begins `Each turn of the main agent processes exactly one signal from the inbox`.
+Read `/Users/waynewang/AI-Robin-Skill/stdlib/kernel-discipline.md` lines 80-94. Locate section `### 3. One routing per turn` and the paragraph that begins `Each turn of the main agent processes exactly one signal from the inbox`.
 
 In that section, immediately after the paragraph that ends `this rule makes the kernel's behavior linearizable and the ledger deterministic.`, insert:
 
@@ -769,7 +769,7 @@ noting the collision.
 
 - [ ] **Step 2: Update dispatch-signal validation rules**
 
-In `/Users/waynewang/AI-Robin-Skill/ai-robin/contracts/dispatch-signal.md`, locate the `## Validation rules` section (around lines 417-426). Replace the current list with this extended list:
+In `/Users/waynewang/AI-Robin-Skill/contracts/dispatch-signal.md`, locate the `## Validation rules` section (around lines 417-426). Replace the current list with this extended list:
 
 ```markdown
 ## Validation rules
@@ -800,7 +800,7 @@ Expected: `2` or more (at least one mention in each file).
 
 ```bash
 cd /Users/waynewang/AI-Robin-Skill
-git add ai-robin/stdlib/kernel-discipline.md ai-robin/contracts/dispatch-signal.md
+git add stdlib/kernel-discipline.md contracts/dispatch-signal.md
 git commit -m "fix(ai-robin): define deterministic signal-ordering for multi-signal turns
 
 When multiple sub-agents emit signals between kernel turns, the kernel now
@@ -816,7 +816,7 @@ replay parity and audit determinism."
 **Files:**
 - Modify: `ai-robin/consumer/SKILL.md`, `ai-robin/planning/SKILL.md`, `ai-robin/execute-control/SKILL.md`, `ai-robin/execute/SKILL.md`, `ai-robin/research/SKILL.md`, `ai-robin/review/SKILL.md`, `ai-robin/review/review-plan/SKILL.md`, `ai-robin/review/merge/SKILL.md`
 
-Sub-skill SKILL.md files currently carry YAML frontmatter with `name:` and `description:`. If installed into Claude Code's skill directory, each would register as a top-level user-invocable skill, contradicting the "Do NOT invoke directly" instruction in the description. Strip the frontmatter and replace it with a plain markdown "Internal sub-skill" banner. The main `ai-robin/SKILL.md` keeps its frontmatter — it IS user-invocable.
+Sub-skill SKILL.md files currently carry YAML frontmatter with `name:` and `description:`. If installed into Claude Code's skill directory, each would register as a top-level user-invocable skill, contradicting the "Do NOT invoke directly" instruction in the description. Strip the frontmatter and replace it with a plain markdown "Internal sub-skill" banner. The main `skills/robin-kernel/SKILL.md` keeps its frontmatter — it IS user-invocable.
 
 - [ ] **Step 1: Strip frontmatter from consumer/SKILL.md**
 
@@ -1102,7 +1102,7 @@ git commit -m "fix(ai-robin): strip activation frontmatter from sub-skill SKILL.
 Sub-skills previously had YAML frontmatter with name: + description: that
 would register them as top-level user-invocable skills in Claude Code,
 contradicting their 'Do NOT invoke directly' instruction. Now only the
-main ai-robin/SKILL.md is user-invocable; sub-skills are loaded by the
+main skills/robin-kernel/SKILL.md is user-invocable; sub-skills are loaded by the
 main agent via Read tool. Adds an 'Internal sub-skill' banner to each
 explaining the constraint."
 ```
@@ -1112,24 +1112,24 @@ explaining the constraint."
 ## Task 9: Add "Runtime adaptation" section to DESIGN.md
 
 **Files:**
-- Modify: `/Users/waynewang/AI-Robin-Skill/ai-robin/DESIGN.md`
+- Modify: `/Users/waynewang/AI-Robin-Skill/DESIGN.md`
 
 The `.ai-robin/dispatch/inbox/` file-based signaling model is a formal abstraction. Different runtimes satisfy it differently. This task documents the contract so readers understand what "signal arrives in inbox" means in Claude Code vs. a hypothetical async runtime.
 
 - [ ] **Step 1: Read DESIGN.md to find a good insertion point**
 
-Read `/Users/waynewang/AI-Robin-Skill/ai-robin/DESIGN.md`. Find the natural place to insert a new section about runtime. A good location is near the end, before any "Future work" / "References" section, or right after the main architecture explanation.
+Read `/Users/waynewang/AI-Robin-Skill/DESIGN.md`. Find the natural place to insert a new section about runtime. A good location is near the end, before any "Future work" / "References" section, or right after the main architecture explanation.
 
 Run:
 ```bash
-grep -nE '^## ' /Users/waynewang/AI-Robin-Skill/ai-robin/DESIGN.md
+grep -nE '^## ' /Users/waynewang/AI-Robin-Skill/DESIGN.md
 ```
 
 Identify the last `##` section heading. The new "Runtime adaptation" section should be inserted immediately BEFORE that last section (so it reads as a core design topic, not a trailing appendix).
 
 - [ ] **Step 2: Insert the new "Runtime adaptation" section**
 
-In `/Users/waynewang/AI-Robin-Skill/ai-robin/DESIGN.md`, insert this section at the chosen location:
+In `/Users/waynewang/AI-Robin-Skill/DESIGN.md`, insert this section at the chosen location:
 
 ````markdown
 ## Runtime adaptation
@@ -1202,14 +1202,14 @@ are out of scope for the v1 NLP.
 
 AI-Robin's sub-skills (`consumer/SKILL.md`, `planning/SKILL.md`, etc.)
 must **not** be registered as top-level user-invocable skills. Only the
-root `ai-robin/SKILL.md` has YAML frontmatter; all sub-skill files omit
+root `skills/robin-kernel/SKILL.md` has YAML frontmatter; all sub-skill files omit
 it so the main agent can load them via the `Read` tool without the
 runtime treating them as independent skills discoverable from user intent.
 
 If a runtime's skill-discovery mechanism does not recognize the
 frontmatter-less convention, the sub-skill files should be renamed
 (e.g., to `AGENT.md`) as a runtime-specific adaptation. The root
-`ai-robin/SKILL.md`'s internal references can then be updated to the
+`skills/robin-kernel/SKILL.md`'s internal references can then be updated to the
 new filename. This is purely a runtime-adapter concern, not a change to
 the abstract design.
 ````
@@ -1231,7 +1231,7 @@ Expected: `1` or more.
 
 ```bash
 cd /Users/waynewang/AI-Robin-Skill
-git add ai-robin/DESIGN.md
+git add DESIGN.md
 git commit -m "docs(ai-robin): add Runtime adaptation section to DESIGN.md
 
 Makes explicit that ai-robin's inbox model is an abstraction. Documents
@@ -1245,13 +1245,13 @@ preserves the sub-skill activation invariant."
 ## Task 10: Write end-to-end trace verification document
 
 **Files:**
-- Create: `/Users/waynewang/AI-Robin-Skill/ai-robin/tests/end-to-end-trace.md`
+- Create: `/Users/waynewang/AI-Robin-Skill/tests/end-to-end-trace.md`
 
 A readable, narrative walkthrough of five concrete scenarios through the routing table. This document is the final check that Tasks 1-9 compose into a runnable whole. If any scenario dead-ends, that's a routing bug to fix before merging Plan 1.
 
 - [ ] **Step 1: Create the trace document**
 
-Create `/Users/waynewang/AI-Robin-Skill/ai-robin/tests/end-to-end-trace.md` with this exact content:
+Create `/Users/waynewang/AI-Robin-Skill/tests/end-to-end-trace.md` with this exact content:
 
 ````markdown
 # AI-Robin End-to-End Trace Verification
@@ -1424,7 +1424,7 @@ Expected: **every signal prints "covered"**. If any is missing, extend a scenari
 
 ```bash
 cd /Users/waynewang/AI-Robin-Skill
-git add ai-robin/tests/end-to-end-trace.md
+git add tests/end-to-end-trace.md
 git commit -m "test(ai-robin): add end-to-end trace scenarios covering all signal types
 
 Five narrative walkthroughs through the routing table. Every declared
@@ -1507,7 +1507,7 @@ documented.
 Plan 1 was authored to specify 10 tasks with exact edit content. During execution, code review surfaced issues that required small deviations from the authored spec. Capturing them here so future re-runs of Plan 1 apply them inline instead of discovering them again:
 
 1. **Task 2 — batch-settled rule now "always spawns Review-Plan".**
-   The original spec said "all failed → skip review entirely". Code review caught that this directly contradicts `contracts/dispatch-signal.md` line 291-293 ("Do not skip review — even a failed task's partial output may need verdict logging"). Fix commit `0ed1b9c` revised both `SKILL.md` and `tests/routing-coverage.md` to always spawn Review-Plan on batch settlement. The spec text in Task 2 of this doc was NOT updated — re-executors should apply the corrected rule (see current `ai-robin/SKILL.md` batch-settled rule section).
+   The original spec said "all failed → skip review entirely". Code review caught that this directly contradicts `contracts/dispatch-signal.md` line 291-293 ("Do not skip review — even a failed task's partial output may need verdict logging"). Fix commit `0ed1b9c` revised both `SKILL.md` and `tests/routing-coverage.md` to always spawn Review-Plan on batch settlement. The spec text in Task 2 of this doc was NOT updated — re-executors should apply the corrected rule (see current `skills/robin-kernel/SKILL.md` batch-settled rule section).
 
 2. **Task 2 — `review_merged` row names `review_iterations_per_batch` explicitly.**
    Original spec said "budget left" / "budget exhausted". Code review flagged ambiguity (could mean `replan_iterations`). Fix: both the `review_merged` row in `SKILL.md` and in `tests/routing-coverage.md` now reference `review_iterations_per_batch` by name.

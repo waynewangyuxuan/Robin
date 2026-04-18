@@ -4,7 +4,7 @@
 Validates ledger invariants on session end. Never fails the session; only
 emits warnings to stderr/stdout.
 
-Invariants (from ai-robin/contracts/session-ledger.md):
+Invariants (from contracts/session-ledger.md):
 - entry_id is monotonic (+1 per line)
 - last entry is either run_end (terminal) or an interruption (resumable)
 """
