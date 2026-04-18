@@ -1,6 +1,6 @@
 # AI-Robin End-to-End Trace Verification
 
-Six scenarios walked through the routing table in `SKILL.md`. Every step
+Nine scenarios walked through the routing table in `SKILL.md`. Every step
 lists the incoming signal, the exact routing-table row that handles it,
 the resulting kernel action, and the next expected signal. Each scenario
 MUST terminate (with `run_end` or equivalent) without a dead branch.
@@ -39,7 +39,30 @@ breaks a scenario, that's a regression and the edit must be revised.
 
 ---
 
-## Scenario 2: Research inconclusive
+## Scenario 2a: Research happy path (confident answer)
+
+1. Kernel at stage=`planning`. Planning emits `planning_needs_research`
+   with `question: "best auth library for Next.js App Router 2026"`,
+   `depth_hint: 1`.
+   - Routing: `planning_needs_research` → spawn Research Agent with the
+     question. Keep stage at `planning`.
+2. Research Agent runs web search, produces findings at
+   `.ai-robin/research/q-auth-lib-20260417T120000.md` with confidence
+   0.85, emits `research_complete`.
+   - Routing: `research_complete` → re-spawn Planning Agent with
+     findings attached.
+3. Planning receives findings, records `decision-auth-lib` spec with
+   `confidence: 0.85, provenance: research`, proceeds to Phase 2+.
+4. Planning emits `planning_complete`.
+   - Routing: spawn Execute-Control. (Continues as Scenario 1 from
+     step 5.)
+
+**Status:** Terminates cleanly. High-confidence decision preserved in
+spec provenance.
+
+---
+
+## Scenario 2b: Research inconclusive
 
 1. Kernel at stage=`planning` after `planning_needs_research`.
 2. Research Agent spawned with question `q-auth-lib`, depth=1.
@@ -169,6 +192,50 @@ escalation-notice; `run_end` carries degradation counts.
 
 ---
 
+## Scenario 7: Sub-planning recursion
+
+1. Kernel at stage=`planning`. Planning analyzes a large intent and
+   decides one sub-area (say, "billing subsystem") needs its own nested
+   plan with a separate milestone graph. Emits
+   `planning_needs_sub_planning` with `sub_scope_description: "billing
+   subsystem"` and `parent_plan_refs: [intent-billing-001,
+   constraint-pci-001]`.
+   - Routing: `planning_needs_sub_planning` → spawn a nested Planning
+     Agent for the sub-scope. Keep stage at `planning`.
+2. Sub-Planning Agent produces a plan covering the billing subsystem,
+   honoring the parent plan's referenced specs. Writes specs into the
+   sub-plan Room. Emits `planning_complete` (from the nested invocation).
+   - Routing: parent-kernel merges the sub-plan's milestones into the
+     overall plan, then treats the top-level Planning as complete;
+     advances to Execute-Control. (Continues as Scenario 1 step 5.)
+
+**Status:** Terminates cleanly. Sub-plan milestones are
+indistinguishable from any other in the merged plan.
+
+---
+
+## Scenario 8: Execute-Control cannot form a batch
+
+1. Kernel at stage=`execute-control` after a review cycle. All
+   remaining pending milestones depend on batch-3's output, which was
+   degraded in Scenario 5.
+2. Execute-Control attempts to pick a runnable milestone, finds every
+   candidate is blocked on a degraded dependency (or the plan contains
+   a circular reference). Emits `dispatch_exhausted` with
+   `reason: "blocked_milestones"`.
+   - Routing: `dispatch_exhausted` → route to Planning for replan,
+     consuming `replan_iterations` budget. Planning revises the plan to
+     skip or work around the blocked milestones.
+3. If replan budget is ALREADY exhausted: kernel instead triggers
+   degradation for all remaining pending milestones (mass degrade),
+   writes escalation entries, then proceeds to `run_end` with a summary
+   of degraded scopes.
+
+**Status:** Terminates cleanly. No infinite loop; `dispatch_exhausted`
+either triggers Planning or degrades, never dead-ends.
+
+---
+
 ## Coverage check
 
 Every signal type declared in `contracts/dispatch-signal.md` is exercised
@@ -177,8 +244,8 @@ by at least one scenario above:
 - Scenario 1: `intake_complete`, `planning_complete`, `dispatch_batch`,
   `execute_complete`, `review_dispatch`, `review_sub_verdict`,
   `review_merged`, `all_complete`
-- Scenario 2: `planning_needs_research`, `research_inconclusive`,
-  `research_complete` (Scenario 2 implies the happy-path variant too)
+- Scenario 2a: `planning_needs_research`, `research_complete`
+- Scenario 2b: `research_inconclusive`
 - Scenario 3: `execute_failed` in a mixed batch; exercises the
   "at least one complete" branch of the batch-settled rule
 - Scenario 4: `execute_failed` exclusively; exercises the "all failed"
@@ -186,10 +253,11 @@ by at least one scenario above:
 - Scenario 5: `planning_replan_exhausted`, `stage_exhausted` (implied in
   degradation path)
 - Scenario 6: `intake_blocked`
-- Not covered explicitly: `planning_needs_sub_planning`,
-  `dispatch_exhausted` — both share routing patterns with
-  `planning_needs_research` and `planning_replan_exhausted`
-  respectively. Add scenarios if behavior diverges.
+- Scenario 7: `planning_needs_sub_planning`
+- Scenario 8: `dispatch_exhausted`
+
+All 17 signal types declared in `contracts/dispatch-signal.md` are
+exercised at least once.
 
 If a new signal type is added to the contract, a new scenario (or
 extension of an existing one) MUST be added here.
