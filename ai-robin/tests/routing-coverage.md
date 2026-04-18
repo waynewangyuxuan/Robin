@@ -8,13 +8,18 @@ Run these greps from the ai-robin directory:
 
 ```bash
 # List signal types declared in contract
-grep -E '^#### `[a-z_]+`' contracts/dispatch-signal.md | sed -E 's/.*`([a-z_]+)`.*/\1/' | sort -u
+grep -E '^#### `[a-z_]+`' contracts/dispatch-signal.md | sed -E 's/^#### `([a-z_]+)`.*/\1/' | sort -u
 
-# List signal types covered in main SKILL.md routing table
-grep -E '^\| `[a-z_]+` \|' SKILL.md | sed -E 's/.*`([a-z_]+)`.*/\1/' | sort -u
+# List signal types covered in main SKILL.md routing table.
+# NOTE: the sed regex MUST anchor at the line start (^\| `) — a greedy
+# `.*` pattern would pick up backtick-wrapped identifiers later on each
+# row (e.g. `run_end`, `payload.commit_message`) and produce false gaps.
+grep -E '^\| `[a-z_]+` \|' SKILL.md | sed -E 's/^\| `([a-z_]+)` \|.*/\1/' | sort -u
 
 # Diff: contract signals NOT in routing table
-comm -23 <(contract list) <(skill list)
+comm -23 \
+  <(grep -E '^#### `[a-z_]+`' contracts/dispatch-signal.md | sed -E 's/^#### `([a-z_]+)`.*/\1/' | sort -u) \
+  <(grep -E '^\| `[a-z_]+` \|' SKILL.md | sed -E 's/^\| `([a-z_]+)` \|.*/\1/' | sort -u)
 ```
 
 Expected output of the diff: **empty**. If non-empty, the routing table is incomplete.
