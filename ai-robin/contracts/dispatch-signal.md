@@ -422,10 +422,14 @@ scopes. Only if ALL remaining scopes are exhausted does the whole run end.
 
 ## Validation rules
 
-- `signal_id` must be unique within a run
-- `signal_type` must be one of the enumerated values above
-- `produced_by.invocation_id` must match an invocation main agent actually spawned
-  (prevents stray signals from rogue contexts)
+- `signal_id` must be unique within a run. Uniqueness is enforced by the
+  producing sub-agent via the `{stage}-{agent}-{timestamp}-{shortuuid}` format.
+- `signal_id` is the sort key the kernel uses to order multiple pending
+  signals; see `stdlib/kernel-discipline.md` § "Signal ordering when inbox
+  has multiple files".
+- `signal_type` must be one of the enumerated values in this document
+- `produced_by.invocation_id` must match an invocation main agent actually
+  spawned (prevents stray signals from rogue contexts)
 - Payload shape must match the signal_type's spec exactly — extra fields are
   allowed, missing required fields are a malformed signal
 - `artifacts[].path` must be inside the project root or inside `.ai-robin/`

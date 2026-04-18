@@ -87,6 +87,30 @@ stage-state, then check inbox again.
 This rule makes the kernel's behavior linearizable and the ledger
 deterministic.
 
+### Signal ordering when inbox has multiple files
+
+When two or more signal files are in `.ai-robin/dispatch/inbox/` at the start
+of a turn, process them in **lexicographic order of `signal_id`**. Because
+`signal_id` has format `{stage}-{agent-name}-{YYYYMMDDTHHMMSS}-{shortuuid}`,
+lexicographic order is:
+
+- Chronological within the same `{stage}-{agent}` prefix (timestamp sort)
+- Deterministic but not chronological across different prefixes (alphabetic
+  on prefix first)
+
+Determinism matters for replay and audit; strict chronology does not.
+Lexicographic `signal_id` sort gives total order with zero filesystem
+metadata dependencies.
+
+The kernel reads one signal, routes it, moves it to `processed/`, then
+returns to inbox-check at the top of the next turn. Never process two
+signals "in parallel" within one turn.
+
+If `signal_id` collisions somehow occur (different sub-agents with the
+same id), treat as anomaly: log, pick the lexicographically first filename
+as a deterministic tiebreaker, process it, then log a `correction` entry
+noting the collision.
+
 Exception: when spawning a batch of sub-agents in parallel (e.g., N Execute
 Agents from one dispatch_batch signal, or N review sub-agents from one
 review_dispatch signal), that's one routing action that spawns N invocations.
