@@ -8,6 +8,41 @@ AI-Robin 是一个 Natural Language Program（NLP），跑在 Claude Code 或类
 把需求讲清楚，它自主跑完 planning / execute / review 全流程，结束后你
 来 verify。
 
+**源码是 runtime-agnostic 的**（在 `ai-robin/`），第一个 runtime adapter
+是 Claude Code plugin（在 `.claude-plugin/`）。其他 runtime 可以增加 adapter
+而不改源码。
+
+---
+
+## 安装（Claude Code）
+
+```bash
+claude plugins install /path/to/AI-Robin-Skill
+```
+
+这会激活 `.claude-plugin/` 下的 plugin manifest，注册 3 个 slash commands、
+11 个 sub-agent，和 5 个 hook 脚本（Python 3.11+ 自带库即可）。
+
+## 调用
+
+```
+/ai-robin-start Build a Python CLI that prints fibonacci(10)
+```
+
+也可以：
+- `/ai-robin-resume` — 接着上次被打断的 run（会自动检测 `.ai-robin/stage-state.json`）
+- `/ai-robin-status` — 只看当前状态、不改 state
+
+## 架构
+
+- **抽象源**：`ai-robin/DESIGN.md` + `ai-robin/SKILL.md` + `ai-robin/agents/`
+- **Claude Code adapter**：`.claude-plugin/` 下的 commands / agents / hooks
+- **运行时状态**：每个项目下的 `.ai-robin/`（ledger、stage-state、dispatch inbox）
+
+详见 [`ai-robin/DESIGN.md §8 Runtime adaptation`](ai-robin/DESIGN.md) 和
+[`ai-robin/docs/plugin-equivalence.md`](ai-robin/docs/plugin-equivalence.md)
+(plugin 保留什么、新加什么)。
+
 ---
 
 ## 这是为了解决什么问题
