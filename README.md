@@ -207,7 +207,7 @@ scope，分多次 run。
 
 ### 想改 review 严格度
 
-编辑 `skills/robin-reviewer-code-quality/SKILL.md` 把某些 rule 的 severity
+编辑 `skills/robin-reviewer/domains/code-quality.md` 把某些 rule 的 severity
 从 `quality` 提升到 `blocking`，或降到 `advisory`。
 
 改完之后 AI-Robin 会按新规则 review。

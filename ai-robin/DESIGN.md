@@ -397,9 +397,9 @@ Main agent 并行 spawn 4 × Review Sub-Agent
 10. Execute 的 context-pulling（从 prompt-gen 抽取）/ commit-preparation（从
     commit-sync 抽取）
 
-### 阶段 D: Review playbooks（渐进）
-11. `skills/robin-reviewer-code-quality/SKILL.md`（总是 spawn，必须先有）
-12. 其他 playbook 按需添加——每接触一个新领域加一个
+### 阶段 D: Reviewer domains（渐进）
+11. `skills/robin-reviewer/SKILL.md`（generic review flow）+ `skills/robin-reviewer/domains/code-quality.md`（总是 spawn，必须先有）
+12. 其他 domain 按需添加——每接触一个新领域加一个 `domains/{name}.md` + 一个 `agents/robin-reviewer-{name}.md` wrapper
 
 每个阶段跑完，可以 **dog-food** 在一个真实 mini project 上，发现问题、补 gap。
 
