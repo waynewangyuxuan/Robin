@@ -297,9 +297,8 @@ Consumer 完成后、在 Planning 开始前，你可以 kill 这次 run。Consum
 
 - `ai-robin/DESIGN.md` —— 完整设计文档、thesis、trade-off 分析
 - `ai-robin/docs/architecture.md` —— 架构一页纸
-- `ai-robin/SUMMARY.md` —— 当前文件清单
 - `ai-robin/docs/feature-room-mapping.md` —— 数据格式和 Feature Room 的兼容性
-- `ai-robin/docs/skill-extraction-log.md` —— 哪些方法论来自哪里
+- `ai-robin/docs/plugin-equivalence.md` —— Claude Code plugin 和 source 的关系
 
 ---
 

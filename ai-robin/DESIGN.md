@@ -220,7 +220,6 @@ Sub-agent **必须**：
 ai-robin/
 ├── SKILL.md                              # kernel entrypoint (routing table)
 ├── DESIGN.md                             # 本文档
-├── SUMMARY.md
 ├── contracts/                            # 数据契约
 │   ├── dispatch-signal.md                # Sub-agent return 给 main agent 的 signal
 │   ├── session-ledger.md                 # Append-only 决策日志的格式
@@ -274,11 +273,10 @@ ai-robin/
 │   ├── state-lifecycle.md                # Spec state 转换规则
 │   ├── iteration-budgets.md              # Review 2 次、re-plan 3 次等 budget
 │   └── degradation-policy.md             # 超 budget 后怎么降级
-├── docs/                                 # 架构参考和 migration plans
+├── docs/                                 # 用户向参考文档
 │   ├── architecture.md                   # 本文档的可视化/简化版
 │   ├── feature-room-mapping.md           # 和 Feature Room 的数据兼容说明
-│   ├── skill-extraction-log.md           # 哪些 stdlib 是从哪个 external skill 抽取的
-│   └── plan-2-plugin-migration.md        # Plugin migration plan (Phase 1 + Phase 2)
+│   └── plugin-equivalence.md             # Claude Code plugin adapter 的等价性说明
 └── tests/                                # routing audit + end-to-end traces
     ├── routing-coverage.md
     └── end-to-end-trace.md
