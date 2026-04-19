@@ -38,8 +38,8 @@ REPO_ROOT="$(cd "$(dirname "$_ROBIN_SCRIPT")" 2>/dev/null && pwd)"
 
 ALIAS_NAME="claude-robin"
 ALIAS_LINE="alias ${ALIAS_NAME}='claude --plugin-dir ${REPO_ROOT}'"
-MARKER_BEGIN="# >>> robin plugin alias (managed by dev-install.sh) >>>"
-MARKER_END="# <<< robin plugin alias (managed by dev-install.sh) <<<"
+MARKER_BEGIN="# >>> robin plugin alias >>>"
+MARKER_END="# <<< robin plugin alias <<<"
 
 # Bail helper: return when sourced, exit when executed
 _robin_bail() {
