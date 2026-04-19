@@ -1,513 +1,466 @@
-# AI-Robin — Design Document
+<p align="center">
+  English | <a href="./DESIGN.zh-CN.md">简体中文</a>
+</p>
 
-> An NLP (Natural Language Program) that takes a one-shot human intake and runs
-> an autonomous multi-agent workflow to deliver a software project end to end.
+# Robin — Design Document
+
+> A natural-language program (NLP) that takes a one-shot human intake and runs an autonomous multi-agent workflow to deliver a software project end to end.
 
 ---
 
 ## 1. Thesis
 
-AI-Robin is built on a single bet:
+Robin is built on a single bet:
 
-> **Human思考前置 + AI 长时间 running + Human 后置 verification** 比
-> **Human 在每一步做 tactical 决策** 更高产。
+> **Human thinking up front + AI running long + human verification at the end** beats **human making tactical decisions at every step.**
 
-这是一个 P-vs-NP 式的直觉：verification 比 generation 便宜。只要前期 intake 做得
-足够好，agent framework 在 human 不在场的情况下，是可以把一个项目从 spec 推到
-deliverable 的。
+This is a P-vs-NP-shaped intuition: verification is cheaper than generation. As long as intake is good enough, an agent framework can drive a project from spec to deliverable without a human in the loop.
 
-AI-Robin 不是一个 helper、不是一个 copilot。它是一个 **batch job**：扔进去一个
-需求，几个小时后拿出一个项目。中间没有人。
+Robin is not a helper, not a copilot. It is a **batch job**: drop a brief in, walk away for hours, come back to a project. There is no human in the middle.
 
 ---
 
-## 2. 核心约束
+## 2. Core constraints
 
-整套设计由四个硬约束撑起来：
+The whole design is held up by four hard constraints.
 
-### 约束 1: 只有一次 human 交互
+### Constraint 1: Exactly one human interaction
 
-整个 project 的 lifecycle 里，human 只在 **Intake Agent** 这一个 stage 里出现。
-Intake Agent 结束后，human 就走了，直到最终 verify 项目产出。
+Across the entire project lifecycle, the human only appears in the **Intake** stage. Once Intake returns, the human is gone until the final verification of the deliverable.
 
-这个约束的含义：
-- **Intake Agent 是生死线**。所有可能的决策点、所有可能的 gap、所有模糊性，必须在
-  Intake 阶段被识别、被问清楚、或被 Intake Agent 代为钉死。
-- **后续 agent 没有"停下来问"的 affordance**。它们只有三个出路：自己做决策 / 回到
-  前面的 stage re-plan / 触发 graceful degradation（把这部分标为未完成，继续别的）。
-- **Planning/Execute/Review 都是自主的**。它们依赖的所有信息必须已经在 Intake 阶段
-  固化到 spec 里。
+Implications:
+- **Intake is the life-or-death stage.** Every possible decision point, every gap, every ambiguity must be identified, asked about, or proxied to a decision before Intake returns.
+- **Downstream agents have no "stop and ask" affordance.** They have only three exits: decide for themselves, return to an earlier stage to re-plan, or trigger graceful degradation (mark the work incomplete and continue with the rest).
+- **Planning, Execute, and Review are autonomous.** All information they depend on must already be frozen into spec by Intake.
 
-### 约束 2: Main agent 是 kernel，永远 light
+### Constraint 2: The main agent is a kernel — always light
 
-Main agent 只做三件事：
-1. **Parse stage transitions**（当前是哪个 stage、下一个是什么）
-2. **Spawn sub-agents**（按照 dispatch signal 创建 sub-agent，注入最小必要 context）
-3. **Route return signals**（读 sub-agent 的 return，决定下一步）
+The main agent does only three things:
+1. **Parse stage transitions** — what stage are we in, what comes next.
+2. **Spawn sub-agents** — create sub-agents per dispatch signal, inject the minimum necessary context.
+3. **Route return signals** — read each sub-agent's signal, decide the next step.
 
-Main agent **不做领域判断**——不评估代码好不好、不决定研究方向、不合成文档内容。
-所有实质工作在 sub-agent 里，main agent 的 context window 永远有余量处理意外。
+The main agent **does not make domain judgments** — it does not assess code quality, decide research direction, or compose document content. All substantive work happens in sub-agents; the main agent's context window always has headroom for surprises.
 
-这个约束的实现方式：
-- Sub-agent 不能自己 spawn sub-agent。Sub-agent 通过 **return signal** 告诉 main
-  agent "我需要 X"，main agent 负责真正 spawn。
-- 所有 state 都在 disk 上（spec yaml、session ledger、progress.yaml）。Main agent
-  每次 turn 开始只 load 必要的 state 切片。
+How this is enforced:
+- Sub-agents cannot spawn other sub-agents. A sub-agent uses its **return signal** to tell the main agent "I need X"; the main agent does the actual spawn.
+- All state lives on disk (spec yaml, session ledger, progress.yaml). The main agent loads only the necessary slice of state at the start of each turn.
 
-### 约束 3: 文档系统复用 Feature Room 的数据格式
+### Constraint 3: The doc system reuses Feature Room's data format
 
-AI-Robin 写到 disk 的所有东西，**格式上兼容 Feature Room**：
-- Spec 用 Feature Room 的 7 种 type（intent/decision/constraint/contract/convention/
-  context/change）+ state 机制（draft/active/stale/deprecated/superseded）+ anchor
-  + provenance/confidence。
-- Room 目录结构：`room.yaml`、`specs/`、`progress.yaml`、`spec.md`。
+Everything Robin writes to disk is **format-compatible with Feature Room**:
+- Specs use Feature Room's 7 types (intent / decision / constraint / contract / convention / context / change) + state machine (draft / active / stale / deprecated / superseded) + anchor + provenance / confidence.
+- Room directory layout: `room.yaml`, `specs/`, `progress.yaml`, `spec.md`.
 
-但 AI-Robin **不调用** Feature Room 的现有 skill（room-init, commit-sync, prompt-gen
-等）。它自己的 stdlib 里抽取了这些 skill 的方法论（anchor tracking、confidence
-scoring、state lifecycle 等），用自己的 flavor 重写。
+But Robin **does not invoke** Feature Room's existing skills (room-init, commit-sync, prompt-gen, etc.). Its own `stdlib/` extracts the methodology (anchor tracking, confidence scoring, state lifecycle, etc.) and rewrites it in Robin's own flavor.
 
-**为什么**：Feature Room 的 skill 假设了 "human 每一步都在线"（比如 commit-sync
-Phase 5 "等待用户确认"），这和 AI-Robin 的约束 1 直接冲突。但 Feature Room 的
-**数据模型**是优秀的、可复用的，所以格式兼容、执行独立。
+**Why:** Feature Room's skills assume "human is online at every step" (e.g. commit-sync Phase 5 "wait for user confirmation"), which directly conflicts with Constraint 1. But Feature Room's **data model** is excellent and reusable, so Robin keeps the format and replaces the execution.
 
-### 约束 4: Review 是 domain-specific 的
+### Constraint 4: Review is domain-specific
 
-"Code review" 不是单一 agent 的单一任务。它是 **按 change 性质动态组合**的一组
-领域特定 review：
-- 前端组件 review（component API、props、a11y、styling convention）
-- 后端 API review（endpoint design、error handling、auth）
-- DB schema review（索引、约束、迁移策略）
-- Agent integration review（prompt quality、tool contract、error recovery）
-- Code quality review（可读性、测试、文档）
+"Code review" is not a single agent doing a single task. It is **a dynamically composed set of domain-specific reviews**, picked by the nature of the change:
+- Frontend component review (component API, props, a11y, styling convention)
+- Backend API review (endpoint design, error handling, auth)
+- DB schema review (indexes, constraints, migration strategy)
+- Agent integration review (prompt quality, tool contract, error recovery)
+- Code quality review (readability, tests, docs)
 
-AI-Robin 的 Review 层是 **plan-then-fan-out** 的结构：
-1. **Review-Plan Agent** 看这次 change，决定要 spawn 哪些 review sub-agent
-2. Main agent 并行 spawn N 个 review sub-agent，每个带自己的 **playbook**
-3. 每个 sub-agent 产出结构化 verdict
-4. Merge verdicts，决定 pass / fail
+Robin's Review layer is **plan-then-fan-out**:
+1. **Review-Planner** looks at the change, decides which reviewer sub-agents to spawn.
+2. The main agent spawns N reviewers in parallel, each with its own **playbook**.
+3. Each reviewer produces a structured verdict.
+4. The Merger consolidates verdicts into a pass / fail decision.
 
-Playbooks 是 **build-time 从外部 skill packages 抽取**的。比如前端 review 的
-playbook 是从 gstack 的前端 review skill 抽取、改写成符合 AI-Robin flavor 的
-sub-skill。Runtime 不动态加载外部 skill。
+Playbooks are **extracted at build time from external skill packages** — e.g. the frontend review playbook is distilled from gstack's frontend review skill, rewritten as a Robin-flavor sub-skill. Robin does not dynamically load external skills at runtime.
 
 ---
 
-## 3. 整体架构
+## 3. Overall architecture
 
-### 3.1 Agent 拓扑
+### 3.1 Agent topology
 
+```mermaid
+flowchart TD
+  M[Main Agent / Kernel<br/>dispatch + spawn + route]
+  M --> I[Intake<br/>once]
+  M --> P[Planner<br/>may re-spawn]
+  M --> S[Scheduler<br/>per batch]
+  M --> E[Executor ×N<br/>parallel]
+  M --> RP[Review-Planner]
+  M --> RV[Reviewer ×N<br/>per domain]
+  M --> MG[Merger]
+  M --> C[Committer]
+  M --> D[Degrader]
+  M --> F[Finalizer]
+  P -.->|spawns via signal| R[Researcher]
+
+  classDef kernel fill:#fef3c7,stroke:#d97706,color:#000,stroke-width:2px
+  classDef stage fill:#dbeafe,stroke:#2563eb,color:#000
+  classDef review fill:#fce7f3,stroke:#db2487,color:#000
+  classDef relief fill:#dcfce7,stroke:#16a34a,color:#000
+  class M kernel
+  class I,P,S,E,R stage
+  class RP,RV,MG review
+  class C,D,F relief
 ```
-                    ┌─────────────────┐
-                    │   Main Agent    │  Kernel: dispatch + spawn + route
-                    │   (永远 light)   │
-                    └────────┬────────┘
-                             │
-        ┌────────┬───────────┼───────────────┬─────────────┐
-        │        │           │               │             │
-        ▼        ▼           ▼               ▼             ▼
-   Intake  Planning   Scheduler  Execute Agents  Review Stage
-   (一次)     (可多次)    (每个 stage)    (N 个并行)      (plan + fan-out)
-                │
-                ├──► Research (辅助 sub-agent)
-                │
-                └──► Sub-Planning (更细粒度 planning)
-```
+
+Three kinds of sub-agents:
+- **Stage agents** (blue) drive the pipeline: Intake → Planner → Scheduler → Executor, with Researcher as a Planning helper.
+- **Review pipeline** (pink) runs after each Executor batch: Review-Planner picks playbooks, parallel Reviewers run them, Merger consolidates.
+- **Relief agents** (green) do domain work the kernel cannot do itself: Committer (executes git commits with merger-composed messages), Degrader (writes degradation narratives), Finalizer (composes the end-of-run delivery summary).
 
 ### 3.2 Stage lifecycle
 
+```mermaid
+flowchart LR
+  U([User brief]) --> I[Intake]
+  I -->|intake_complete| P[Planning]
+  P -->|planning_complete| S[Scheduler]
+  P -.->|need_research| RR[Research]
+  RR --> P
+  S -->|dispatch_batch| E[Execute ×N]
+  E -->|execute_complete| RV[Review<br/>plan→fan-out→merge]
+  RV -->|all_pass| S
+  RV -->|has_issues<br/>within budget| P
+  RV -->|budget exhausted| DG[Degrade<br/>continue]
+  DG --> S
+  S -->|all milestones done| FN[Finalize]
+  FN --> V([Human verifies diff])
+
+  classDef human fill:#fef3c7,stroke:#d97706,color:#000
+  classDef stage fill:#dbeafe,stroke:#2563eb,color:#000
+  classDef review fill:#fce7f3,stroke:#db2487,color:#000
+  classDef degrade fill:#fed7aa,stroke:#ea580c,color:#000
+  class U,V human
+  class I,P,RR,S,E,FN stage
+  class RV review
+  class DG degrade
 ```
-[Stage 0: Intake]
-  User 扔 raw input
-    ↓
-  Main agent spawn Intake Agent
-    ↓
-  Intake Agent:
-    - 主动穷举决策点
-    - 识别 gap、问 user、钉死 decisions
-    - 写 spec 到 Room 结构
-    - self-review 完整性
-    ↓
-  return: "intake_complete" + spec-ready-for-planning
-    ↓
-  Human 此时退出，后续不再 involve
 
-[Stage 1: Planning]
-  Main agent spawn Planning Agent
-    ↓
-  Planning Agent:
-    - 读 intake 的 spec
-    - 产出 decision/contract/constraint spec
-    - 识别模块边界 + API 契约
-    - 定义 milestones
-    ↓
-  return 可能是:
-    - "planning_complete" → 进入 Scheduler
-    - "need_research" → main agent spawn Research Agent
-    - "need_sub_planning" → main agent spawn sub-planning for specific part
-    - "replan_budget_exhausted" → graceful degradation
+In words:
 
-[Stage 2: Scheduler]
-  Main agent spawn Scheduler Agent
-    ↓
-  Scheduler Agent:
-    - 读 plan + 当前 progress
-    - 决定这一批要 spawn 几个 Execute Agent、各自 scope
-    - 判断并发度（按 depends_on 和 contract 约束）
-    ↓
-  return: "dispatch_batch" + [task specs for N execute agents]
+- **Stage 0 — Intake.** User drops raw input. Main agent spawns Intake. Intake exhaustively probes for decisions, identifies gaps, asks the user, freezes decisions into spec, self-reviews completeness. Returns `intake_complete`. **Human exits here.**
 
-[Stage 3: Execute]
-  Main agent spawn N × Execute Agent (并行或串行，按 Scheduler 指令)
-    ↓
-  每个 Execute Agent:
-    - 拉自己 scope 内的 context
-    - 执行代码任务
-    - 产出代码 + spec updates + change record
-    ↓
-  return: "execute_complete" + artifacts reference
+- **Stage 1 — Planning.** Main agent spawns Planner. Planner reads Intake's specs, produces decision / contract / constraint specs, identifies module boundaries and API contracts, defines milestones. Return signal is one of `planning_complete` / `need_research` (main agent then spawns Researcher) / `need_sub_planning` / `replan_budget_exhausted` (degrade).
 
-[Stage 4: Review]
-  所有 Execute Agent 都结束后，main agent spawn Review-Plan Agent
-    ↓
-  Review-Plan Agent:
-    - 看 change 性质
-    - 决定 spawn 哪些 review sub-agent
-    ↓
-  return: "review_dispatch" + [review playbook names]
-    ↓
-  Main agent spawn N × Review Sub-Agent (并行)
-    ↓
-  每个 Review Sub-Agent 读自己的 playbook + 相关 change，产出 verdict
-    ↓
-  Main agent 调用 Review-Merge 合并 verdicts
-    ↓
-  【强制 commit】无论 pass/fail，这次 review 的结果都写入 ledger
-    ↓
-  return 可能是:
-    - "all_pass" → 回 Stage 2 继续下一个 batch
-    - "has_issues" + 第 1 次 → 整理 issues，回 Stage 1 re-plan
-    - "has_issues" + 第 2 次 → 再 re-plan + execute + review 一次
-    - "has_issues" + 第 3 次 → 降级，标为 known issue，继续其他 batch
+- **Stage 2 — Scheduler.** Main agent spawns Scheduler. Scheduler reads plan + current progress, decides this batch's milestone scope and concurrency (parallel / serial / mixed) per `depends_on` and contract constraints. Returns `dispatch_batch` with task specs for N executors.
 
-[Stage Done]
-  所有 milestone 完成（或超 budget）
-    ↓
-  生成交付包: 代码 + spec 完整状态 + session ledger + 未完成说明(如有)
-    ↓
-  Human 回来做 final verification
-```
+- **Stage 3 — Execute.** Main agent spawns N Executors per Scheduler's instruction. Each pulls its scope's context, writes code + spec updates + change records, returns `execute_complete` with artifacts reference.
+
+- **Stage 4 — Review.** Once all Executors return, main agent spawns Review-Planner. Review-Planner inspects the change nature (file types, anchors, contract specs), returns `review_dispatch` with a playbook list. Main agent spawns N Reviewers in parallel; each loads its playbook + the relevant change, runs the checklist, produces a verdict. Main agent invokes Merger to consolidate verdicts. **Forced commit:** the verdict bundle is always written (pass or fail) via Committer, ledger appended. Then: `all_pass` → back to Scheduler; `has_issues` within budget → back to Planning; budget exhausted → Degrader writes the narrative, continue with the known issue.
+
+- **Stage Done.** All milestones complete (or budget hit). Finalizer composes the delivery bundle: code + final spec state + session ledger + escalation notice (if any). Human returns for final verification.
 
 ### 3.3 Return signals
 
-每个 sub-agent 只能通过 **return 一个结构化 signal** 和 main agent 通信。Main
-agent 根据 signal type 决定下一步。
+Each sub-agent communicates with the main agent only through a single structured **return signal**. The main agent decides the next step from the signal type.
 
-Sub-agent **不能**：
-- 自己 spawn 其他 sub-agent
-- 读其他 sub-agent 的 in-progress 输出
-- 直接修改 session ledger（main agent 负责 append）
+Sub-agents **must not**:
+- Spawn other sub-agents.
+- Read other sub-agents' in-progress output.
+- Directly modify the session ledger (the main agent appends).
 
-Sub-agent **必须**：
-- 产出一个符合 `contracts/dispatch-signal.md` 的 return object
-- 把所有 artifacts 写到约定路径（符合 Feature Room 的 Room 结构）
-- 在 return 前写一个 session-ledger entry
+Sub-agents **must**:
+- Produce a return object conforming to [`contracts/dispatch-signal.md`](contracts/dispatch-signal.md).
+- Write all artifacts to the agreed paths (Feature Room Room layout).
+- Append a session-ledger entry before returning.
 
 ---
 
-## 4. 目录结构
+## 4. Directory structure
 
 ```
-ai-robin/
-├── SKILL.md                              # kernel entrypoint (routing table)
-├── DESIGN.md                             # 本文档
-├── contracts/                            # 数据契约
-│   ├── dispatch-signal.md                # Sub-agent return 给 main agent 的 signal
-│   ├── session-ledger.md                 # Append-only 决策日志的格式
-│   ├── stage-state.md                    # 当前 stage 的状态表示
-│   ├── review-verdict.md                 # Review sub-agent 的统一输出
-│   └── escalation-notice.md              # 降级时写入交付包的"未完成说明"
-├── agents/                               # 所有 agent 的 package
-│   ├── kernel/                           # Main agent 的内部资源
-│   │   └── discipline.md                 # Main agent 作为 kernel 的行为规范
-│   ├── consumer/                         # Stage 0
+AI-Robin-Skill/                         # repo root
+├── README.md                           # English README
+├── README.zh-CN.md                     # Chinese README
+├── DESIGN.md                           # this document (English)
+├── DESIGN.zh-CN.md                     # this document (Chinese)
+├── LICENSE                             # MIT
+├── ROBIN-LOGO.png                      # logo
+├── .claude-plugin/
+│   └── plugin.json                     # Claude Code plugin manifest
+├── commands/                           # slash command definitions (plugin-registered)
+│   ├── robin-start.md
+│   ├── robin-resume.md
+│   └── robin-status.md
+├── agents/                             # sub-agent wrappers (plugin-registered)
+│   ├── robin-intake.md, robin-planner.md, robin-scheduler.md, robin-executor.md
+│   ├── robin-researcher.md
+│   ├── robin-review-planner.md, robin-merger.md
+│   ├── robin-reviewer-code-quality.md  # one wrapper per reviewer domain
+│   └── robin-committer.md, robin-degrader.md, robin-finalizer.md
+├── skills/                             # skill bodies (loaded by agents via Read)
+│   ├── robin-kernel/
+│   │   ├── SKILL.md                    # main dispatch / routing methodology
+│   │   └── discipline.md               # kernel behavior rules
+│   ├── robin-intake/                   # Stage 0
 │   │   ├── SKILL.md
-│   │   ├── decision-taxonomy.md          # 项目类型 → 必须决策点
-│   │   ├── question-prioritization.md    # 交互预算 + 问题排序
-│   │   ├── completeness-check.md         # Return 前的 self-review
+│   │   ├── decision-taxonomy.md        # project type → required decisions
+│   │   ├── question-prioritization.md  # interaction budget + prioritization
+│   │   ├── completeness-check.md       # pre-return self-review
 │   │   └── phases/
-│   ├── planning/                         # Stage 1
+│   ├── robin-planner/                  # Stage 1
 │   │   ├── SKILL.md
-│   │   ├── contract-design.md            # 怎么设计模块间 API 契约
-│   │   ├── parallelism-identification.md # 识别可并行边界
-│   │   ├── replan-protocol.md            # 收到 Review fail 怎么 incremental re-plan
 │   │   └── phases/
-│   ├── research/                         # Planning 辅助
+│   ├── robin-researcher/               # Planning support
 │   │   └── SKILL.md
-│   ├── execute-control/                  # Stage 2
+│   ├── robin-scheduler/                # Stage 2
 │   │   ├── SKILL.md
-│   │   ├── concurrency-rules.md
 │   │   └── phases/
-│   ├── execute/                          # Stage 3
+│   ├── robin-executor/                 # Stage 3
 │   │   ├── SKILL.md
-│   │   ├── context-pulling.md            # (build-time from prompt-gen)
-│   │   ├── commit-preparation.md         # (build-time from commit-sync Phase 1-4)
 │   │   └── phases/
-│   └── review/                           # Stage 4
-│       ├── SKILL.md                      # 入口（就是 review-plan）
-│       ├── review-plan/
-│       │   └── SKILL.md                  # Review-Plan Agent
-│       ├── merge/
-│       │   └── SKILL.md                  # Verdict merge
-│       └── playbooks/                    # 各领域 review sub-skills
-│           ├── code-quality/SKILL.md     # 总是 spawn
-│           ├── frontend-component/SKILL.md
-│           ├── frontend-a11y/SKILL.md
-│           ├── backend-api/SKILL.md
-│           ├── db-schema/SKILL.md
-│           ├── agent-integration/SKILL.md
-│           └── test-coverage/SKILL.md
-├── stdlib/                               # 共享方法论（kernel-discipline.md 已移走）
-│   ├── feature-room-spec.md              # Spec yaml 格式 (从 Feature Room 复用)
-│   ├── anchor-tracking.md                # (build-time from commit-sync)
-│   ├── confidence-scoring.md             # (build-time from random-contexts)
-│   ├── state-lifecycle.md                # Spec state 转换规则
-│   ├── iteration-budgets.md              # Review 2 次、re-plan 3 次等 budget
-│   └── degradation-policy.md             # 超 budget 后怎么降级
-├── docs/                                 # 用户向参考文档
-│   ├── architecture.md                   # 本文档的可视化/简化版
-│   ├── feature-room-mapping.md           # 和 Feature Room 的数据兼容说明
-│   └── plugin-equivalence.md             # Claude Code plugin adapter 的等价性说明
-└── tests/                                # routing audit + end-to-end traces
+│   ├── robin-review-planner/           # Review: planner
+│   │   └── SKILL.md
+│   ├── robin-reviewer/                 # Review: generic flow
+│   │   ├── SKILL.md
+│   │   └── domains/                    # one .md per domain checklist
+│   │       └── code-quality.md         # always-spawn baseline
+│   ├── robin-merger/                   # Review: verdict consolidation
+│   │   └── SKILL.md
+│   ├── robin-committer/                # Git commit executor (kernel relief)
+│   │   └── SKILL.md
+│   ├── robin-degrader/                 # Degradation narrative author
+│   │   └── SKILL.md
+│   └── robin-finalizer/                # End-of-run delivery summary
+│       └── SKILL.md
+├── hooks/                              # plugin lifecycle hooks
+│   ├── hooks.json
+│   ├── pre_task.py, post_task.py
+│   ├── session_start.py
+│   ├── stop.py, subagent_stop.py
+│   └── lib/
+├── contracts/                          # cross-agent data contracts
+│   ├── dispatch-signal.md              # sub-agent return → main agent
+│   ├── session-ledger.md               # append-only decision log
+│   ├── stage-state.md                  # current-stage representation
+│   ├── review-verdict.md               # reviewer output schema
+│   └── escalation-notice.md            # delivery-bundle "incomplete" notice
+├── stdlib/                             # shared methodology
+│   ├── feature-room-spec.md            # spec yaml format (reused from Feature Room)
+│   ├── anchor-tracking.md              # (build-time from commit-sync)
+│   ├── confidence-scoring.md           # (build-time from random-contexts)
+│   ├── state-lifecycle.md              # spec state transition rules
+│   ├── iteration-budgets.md            # review/replan/research budgets
+│   └── degradation-policy.md           # what to do when budgets exhaust
+├── docs/                               # human-facing reference docs
+│   ├── architecture.md
+│   ├── feature-room-mapping.md
+│   ├── plugin-equivalence.md
+│   └── review-stage-overview.md
+└── tests/                              # routing audit + end-to-end traces
     ├── routing-coverage.md
     └── end-to-end-trace.md
 ```
 
+Notes:
+- The **kernel entrypoint is `skills/robin-kernel/SKILL.md`**, not a root `SKILL.md`. The Claude Code plugin loads it when `/robin-start` or `/robin-resume` is invoked.
+- The `agents/` directory holds **wrappers** that the plugin system registers as sub-agents. Each wrapper points its loaded body at `skills/robin-{name}/SKILL.md`.
+- Reviewer domains are **one file each** under `skills/robin-reviewer/domains/` — adding a new domain is one new `.md` + one new `agents/robin-reviewer-{domain}.md` wrapper, no new top-level skill directory.
+
 ---
 
-## 5. 关键机制
+## 5. Key mechanisms
 
-### 5.1 Session Ledger
+### 5.1 Session ledger
 
-所有 agent 的行为都留痕。Session ledger 是 append-only 的 jsonl 文件，放在
-项目的 `.ai-robin/ledger.jsonl`。
+Every agent action leaves a trace. The session ledger is an append-only `jsonl` file at the project's `.ai-robin/ledger.jsonl`.
 
-每条 entry 记录：
-- 时间戳
-- 哪个 agent / stage / iteration
-- 产生了什么 artifacts（reference 到 spec id 或文件路径）
-- 关键决策（what / why）
+Each entry records:
+- Timestamp
+- Which agent / stage / iteration
+- What artifacts were produced (reference to spec id or file path)
+- Key decisions (what / why)
 
-Human final verification 时，读 ledger 可以快速定位任何一个决策点。这把
-verification 的成本从 O(deliverable 大小) 降到 O(决策数量)。
+At final verification time, reading the ledger lets a human jump to any decision point quickly. This drops verification cost from O(deliverable size) to O(decisions).
 
 ### 5.2 Budget & iteration
 
-几个 hard budget，写进 `stdlib/iteration-budgets.md`：
+Hard budgets, defined in [`stdlib/iteration-budgets.md`](stdlib/iteration-budgets.md):
 
-| Budget | 默认值 | 触发时的行为 |
+| Budget | Default | What happens at trigger |
 |---|---|---|
-| Review on same content | 2 次 | 第 3 次 fail → degrade to known issue |
-| Re-plan on same stage | 3 次 | 第 4 次 → degrade to known issue |
-| Research depth | 2 层（research 可以触发 sub-research） | 第 3 层 → 用已有信息做决策 |
-| Total wall-clock | 由 Intake 阶段确定 | 超时 → 暂停，等 human |
-| Total token budget | 由 Intake 阶段确定 | 超时 → 暂停，等 human |
+| Review on same content | 2 attempts | 3rd fail → degrade to known issue |
+| Re-plan on same stage | 3 attempts | 4th → degrade to known issue |
+| Research depth | 2 levels (research can trigger sub-research) | 3rd level → decide with available info |
+| Total wall-clock | Set by Intake | Timeout → pause, wait for human |
+| Total token budget | Set by Intake | Timeout → pause, wait for human |
 
-Budget 不是软约束，是硬 kill switch。任何 agent 在 return 前要 check budget。
+Budgets are not soft constraints — they are hard kill switches. Every agent checks budget before returning.
 
 ### 5.3 Graceful degradation
 
-当 budget 被 exhaust 时，系统**不 crash、不 escalate to human**（因为 human 不在），
-而是 **degrade gracefully**：
+When a budget is exhausted, the system **does not crash and does not escalate to human** (the human is not online). Instead, it **degrades gracefully**:
 
-- 这部分工作标记为 `state: degraded`
-- 写一个 `context-degraded-*.yaml` spec 说明：目标是什么、尝试过什么、最后为什么
-  放弃、当前状态是什么
-- 继续剩下的工作
-- 最终交付包里有一份 `escalation-notice.md`，列出所有降级项
+- The work is marked `state: degraded`.
+- A `context-degraded-*.yaml` spec is written by the Degrader, explaining: what the goal was, what was tried, why it was abandoned, and the current state.
+- Remaining work continues.
+- The final delivery bundle includes an [`escalation-notice.md`](contracts/escalation-notice.md) listing every degraded item.
 
-Human final verify 时，看到降级清单，决定是自己接手修、还是再跑一轮 AI-Robin、
-还是改需求。
+At final verify, the human sees the degradation list and decides: take over manually, run Robin again with adjusted intake, or change the requirement.
 
-### 5.4 Review Stage 的 plan-fan-out-merge
+### 5.4 Review stage: plan → fan-out → merge
 
-这是整个架构里最复杂的一层，单独展开：
+This is the most complex layer in the architecture. Expanded:
 
+```mermaid
+flowchart TD
+  X[Execute batch ends] --> RP[Review-Planner reads change<br/>autonomy: autonomous<br/>picks domain playbooks]
+  RP -->|dispatch list| F1[Reviewer<br/>code-quality]
+  RP --> F2[Reviewer<br/>frontend-component]
+  RP --> F3[Reviewer<br/>backend-api]
+  RP --> Fn[Reviewer<br/>...]
+  F1 & F2 & F3 & Fn -->|verdicts| MG[Merger<br/>consolidate verdicts<br/>compose commit message]
+  MG --> CM[Committer<br/>force commit verdict + ledger]
+  CM --> R{Pass?}
+  R -->|all_pass| Next[→ next batch]
+  R -->|has_issues<br/>within budget| Re[→ re-plan]
+  R -->|budget exhausted| Dg[→ Degrader<br/>continue]
+
+  classDef stage fill:#dbeafe,stroke:#2563eb,color:#000
+  classDef review fill:#fce7f3,stroke:#db2487,color:#000
+  classDef relief fill:#dcfce7,stroke:#16a34a,color:#000
+  classDef decision fill:#fef9c3,stroke:#ca8a04,color:#000
+  class X,Next,Re stage
+  class RP,F1,F2,F3,Fn,MG review
+  class CM,Dg relief
+  class R decision
 ```
-Execute Stage 结束
-  ↓
-Main agent 读取这一批 Execute Agent 产出的 change（通过 session ledger）
-  ↓
-Spawn Review-Plan Agent
-  读 change 性质: 涉及哪些文件类型、哪些 anchor、哪些 contract spec
-  决策 autonomy: autonomous
-  产出 dispatch list: [
-    "code-quality",           # always
-    "frontend-component",     # 因为改了 .tsx 文件
-    "backend-api",            # 因为改了 /api/ 下的文件
-    "agent-integration"       # 因为改了 prompt 或 tool 定义
-  ]
-  return to main agent
-  ↓
-Main agent 并行 spawn 4 × Review Sub-Agent
-  每个 sub-agent 独立:
-    - load 自己的 playbook (skills/ (robin-reviewer-* dirs){name}/SKILL.md)
-    - load change 相关的代码和 spec
-    - 运行 playbook 的 checklist
-    - 产出 verdict: { status: pass/fail, issues: [...], severity: ... }
-  ↓
-所有 sub-agent 结束，main agent spawn Merge
-  Merger Agent:
-    - 合并所有 verdict
-    - any critical fail → overall fail
-    - only minor warnings → overall pass with warnings
-    - all clean → overall pass
-  ↓
-【强制 commit】
-  不管 pass/fail，这次 review 产出的 verdict 包写到 Room 的 specs/ 下
-  作为一个 change-review-{timestamp}-*.yaml spec
-  commit 到 git
-  session ledger append entry
-  ↓
-根据 verdict 决定下一步:
-  pass → return "ready_for_next_batch" to Scheduler
-  fail + within iteration budget → return "needs_rework" + issues → Planning
-  fail + budget exhausted → return "degraded" + reason → continue with known issue
-```
+
+Step-by-step:
+
+1. **Execute batch ends.** Main agent reads the batch's change artifacts (via session ledger).
+2. **Review-Planner** runs once. Looks at change nature: file types touched, anchors changed, contract specs affected. Decides the dispatch list, e.g.:
+   - `code-quality` (always)
+   - `frontend-component` (because `.tsx` files changed)
+   - `backend-api` (because `/api/` files changed)
+   - `agent-integration` (because prompt or tool definitions changed)
+3. **Main agent spawns N reviewers in parallel.** Each one independently:
+   - Loads its playbook (`skills/robin-reviewer/domains/{domain}.md`).
+   - Loads relevant code + spec.
+   - Runs the playbook's checklist.
+   - Returns a verdict: `{ status: pass | fail, issues: [...], severity: ... }`.
+4. **Merger** consolidates verdicts:
+   - Any critical fail → overall fail.
+   - Only minor warnings → overall pass with warnings.
+   - All clean → overall pass.
+   - Composes the commit message for the Committer.
+5. **Committer commits — always.** Whether pass or fail, the verdict bundle is written to the Room's `specs/` as a `change-review-{timestamp}-*.yaml` spec, committed to git, ledger appended.
+6. **Decide next:**
+   - `pass` → `ready_for_next_batch` to Scheduler.
+   - `fail` within iteration budget → `needs_rework` + issues → Planning.
+   - `fail` with budget exhausted → Degrader writes the narrative; continue with the known issue.
 
 ---
 
 ## 6. Build strategy
 
-这个 NLP 本身规模不小（25-40 个 markdown files）。开发顺序：
+The NLP itself is sizable (25–40 markdown files). Development order:
 
-### 阶段 A: 骨架（最先写）
-1. `SKILL.md`（main dispatch）
-2. `contracts/` 下所有 contract 定义
+### Phase A: Skeleton (first)
+1. `skills/robin-kernel/SKILL.md` (main dispatch)
+2. All `contracts/` files
 3. `skills/robin-kernel/discipline.md`
 4. `stdlib/feature-room-spec.md`
 5. `stdlib/iteration-budgets.md`
 6. `stdlib/degradation-policy.md`
 
-### 阶段 B: 五个 agent 的骨架
-7. 每个 stage 目录下的 `SKILL.md` 骨架，定义 return signal 和核心流程
+### Phase B: Stage agent skeletons
+7. `SKILL.md` for each `skills/robin-{stage}/`, defining return signals and core flow
 
-### 阶段 C: 每个 agent 的 stdlib depth
-8. Intake 的 decision-taxonomy / question-prioritization / completeness-check
-9. Planning 的 contract-design / parallelism-identification / replan-protocol
-10. Execute 的 context-pulling（从 prompt-gen 抽取）/ commit-preparation（从
-    commit-sync 抽取）
+### Phase C: Per-agent stdlib depth
+8. Intake's `decision-taxonomy.md` / `question-prioritization.md` / `completeness-check.md`
+9. Planner's contract-design / parallelism-identification / replan-protocol modules
+10. Executor's context-pulling (build-time from prompt-gen) / commit-preparation (build-time from commit-sync)
 
-### 阶段 D: Reviewer domains（渐进）
-11. `skills/robin-reviewer/SKILL.md`（generic review flow）+ `skills/robin-reviewer/domains/code-quality.md`（总是 spawn，必须先有）
-12. 其他 domain 按需添加——每接触一个新领域加一个 `domains/{name}.md` + 一个 `agents/robin-reviewer-{name}.md` wrapper
+### Phase D: Reviewer domains (incremental)
+11. `skills/robin-reviewer/SKILL.md` (generic review flow) + `skills/robin-reviewer/domains/code-quality.md` (always-spawn, must exist first)
+12. Add domains as needed — each new domain is one `domains/{name}.md` + one `agents/robin-reviewer-{name}.md` wrapper.
 
-每个阶段跑完，可以 **dog-food** 在一个真实 mini project 上，发现问题、补 gap。
+After each phase, **dog-food on a real mini project** to find gaps.
 
 ---
 
-## 7. 开放问题
+## 7. Open questions
 
-这些问题在开发过程中会被逐步收紧：
+These are tightened as development progresses:
 
-1. **Intake Agent 的交互预算到底是多少？** 3 轮 Q&A？10 个问题？需要实测。
-2. **Research Agent 的输出格式**——是 structured findings（JSON），还是 markdown？
-   倾向 markdown + 一个 summary spec。
-3. **Execute Agent 内部是不是也用 tree 递归？** 比如一个大 task 可以 decompose 成
-   多个 sub-task？目前设计是不递归，由 Scheduler 统一切分。
-4. **Review playbook 怎么判断触发条件**——按文件扩展名？按 anchor 内容？需要一个
-   明确的 trigger matcher 规范。
-5. **跨项目的 learning**——不同项目之间有没有经验复用？目前不做，每个项目独立。
+1. **Intake's interaction budget — what's the right number?** 3 rounds of Q&A? 10 questions? Needs measurement.
+2. **Researcher's output format** — structured findings (JSON) or markdown? Leaning markdown + a summary spec.
+3. **Should Executors recurse?** Can a large task decompose into sub-tasks internally? Current design: no. Scheduler does all decomposition.
+4. **Review playbook trigger conditions** — by file extension? by anchor content? Needs an explicit trigger-matcher spec.
+5. **Cross-project learning** — should different projects share experience? Current answer: no, each project is isolated.
 
 ---
 
 ## 8. Runtime adaptation
 
-AI-Robin is a **runtime-agnostic natural-language program (NLP)**. The
-architecture assumes sub-agents communicate with the main agent via a
-shared inbox (`.ai-robin/dispatch/inbox/{signal-id}.json`). What "communicate
-via inbox" concretely means depends on the runtime.
+Robin is a **runtime-agnostic NLP**. The architecture assumes sub-agents communicate with the main agent via a shared inbox (`.ai-robin/dispatch/inbox/{signal-id}.json`). What "communicate via inbox" concretely means depends on the runtime.
 
 ### Reference model (abstract)
 
-- Sub-agents run independently. When done, each writes a single JSON signal
-  file to `.ai-robin/dispatch/inbox/`.
+```mermaid
+sequenceDiagram
+  participant K as Main Agent (Kernel)
+  participant SA as Sub-Agent
+  participant FS as .ai-robin/dispatch/inbox/
+  participant L as ledger.jsonl
+
+  K->>SA: spawn (with scope)
+  activate SA
+  SA->>SA: do work
+  SA->>FS: write {signal-id}.json
+  SA-->>K: return
+  deactivate SA
+  K->>FS: glob inbox/, read one signal<br/>(lexicographic order)
+  K->>L: append routing entry
+  K->>FS: mv signal → processed/
+  Note over K: Process exactly one<br/>signal per turn
+```
+
+- Sub-agents run independently. When done, each writes a single JSON signal file to `.ai-robin/dispatch/inbox/`.
 - The main agent's turn loop:
   1. Read `stage-state.json`.
   2. Check inbox for new signal files.
-  3. Process **one** signal (lexicographic order; see
-     `skills/robin-kernel/discipline.md`).
-  4. Move signal file to `processed/`, append ledger, update state.
-- Parallel sub-agents means: N sub-agents each write one signal file; main
-  agent processes them across N turns, one signal at a time.
+  3. Process **one** signal (lexicographic order; see [`skills/robin-kernel/discipline.md`](skills/robin-kernel/discipline.md)).
+  4. Move signal to `processed/`, append ledger, update state.
+- "N parallel sub-agents" means N sub-agents each write one signal file; the main agent processes them across N turns, one signal per turn.
 
 ### Claude Code mapping
 
-Claude Code's `Task` tool is **synchronous**: invoking it runs the sub-agent
-to completion and returns its result within the same parent turn. There is
-no asynchronous "sub-agent is still running in the background" state.
+Claude Code's `Task` tool is **synchronous**: invoking it runs the sub-agent to completion and returns its result within the same parent turn. There is no asynchronous "still running in the background" state.
 
 In Claude Code, the reference model collapses cleanly:
 
-- Sub-agent work: main agent invokes `Task`. The sub-agent's SKILL file
-  instructs it to write its final signal to
-  `.ai-robin/dispatch/inbox/{signal-id}.json` just before returning.
-- "Checking inbox": main agent reads `.ai-robin/dispatch/inbox/` with
-  `Glob`/`Read` **within the same turn** that the sub-agent returned.
-- Parallel dispatch: main agent issues N `Task` tool calls in **one
-  message** (Claude Code runs them concurrently). Each sub-agent writes its
-  own signal file. After all N return, main agent sees N signals in inbox.
-- Signal ordering: the signal files are all present when main agent reads
-  them; lexicographic sort on signal_id gives deterministic processing
-  order.
+- **Sub-agent work:** main agent invokes `Task`. The sub-agent's SKILL file instructs it to write its final signal to `.ai-robin/dispatch/inbox/{signal-id}.json` just before returning.
+- **"Checking inbox":** main agent reads `.ai-robin/dispatch/inbox/` with `Glob`/`Read` **within the same turn** that the sub-agent returned.
+- **Parallel dispatch:** main agent issues N `Task` tool calls in **one message** (Claude Code runs them concurrently). Each sub-agent writes its own signal file. After all N return, main agent sees N signals in inbox.
+- **Signal ordering:** signal files are all present when the main agent reads them; lexicographic sort on `signal_id` gives deterministic processing order.
 
-The file-based inbox is still the authoritative communication channel even
-in Claude Code. Sub-agents must not return structured data "through the
-Task return value" alone — the signal file is the source of truth for audit.
+The file-based inbox is still the authoritative communication channel even in Claude Code. Sub-agents must not return structured data through the `Task` return value alone — the signal file is the source of truth for audit.
 
 ### Other runtimes
 
-- **Truly async runtime (e.g., a custom orchestration loop)**: inbox polling
-  fires between real asynchronous work. `active_invocations` tracks
-  in-flight agents accurately. Signal ordering rule still applies.
-- **Single-threaded runtime without parallelism**: spawn "N parallel
-  agents" degrades gracefully to sequential execution. Same inbox, same
-  routing, just slower.
+- **Truly async runtime (custom orchestration loop):** inbox polling fires between real asynchronous work. `active_invocations` tracks in-flight agents accurately. Signal-ordering rule still applies.
+- **Single-threaded runtime without parallelism:** "N parallel agents" degrades gracefully to sequential execution. Same inbox, same routing, just slower.
 
 ### Invariants that hold across all runtimes
 
 - One signal per sub-agent invocation.
 - Signals are files in `.ai-robin/dispatch/inbox/` until processed.
-- Main agent never reads sub-agent tool-return values as the authoritative
-  source of signal content — only the inbox file.
-- Main agent processes one signal per routing action (see
-  `skills/robin-kernel/discipline.md` § 3), regardless of how many are present.
+- Main agent never reads sub-agent tool-return values as the authoritative source — only the inbox file.
+- Main agent processes one signal per routing action (see [`skills/robin-kernel/discipline.md`](skills/robin-kernel/discipline.md) §3), regardless of how many are present.
 
-If a runtime cannot satisfy these invariants (e.g., has no filesystem),
-an adapter layer is required. AI-Robin does not ship such adapters — they
-are out of scope for the v1 NLP.
+If a runtime cannot satisfy these invariants (e.g. no filesystem), an adapter layer is required. Robin does not ship such adapters — they are out of scope for v1.
 
 ### Sub-skill invocation and activation
 
-AI-Robin's sub-skills (`skills/robin-intake/SKILL.md`, `skills/robin-planner/SKILL.md`, etc.)
-must **not** be registered as top-level user-invocable skills. Only the
-root `skills/robin-kernel/SKILL.md` has YAML frontmatter; all sub-skill files omit
-it so the main agent can load them via the `Read` tool without the
-runtime treating them as independent skills discoverable from user intent.
+Robin's sub-skills (`skills/robin-intake/SKILL.md`, `skills/robin-planner/SKILL.md`, etc.) **must not** be registered as top-level user-invocable skills. Only the kernel skill (`skills/robin-kernel/SKILL.md`) has YAML frontmatter; all sub-skill files omit it so the main agent can load them via the `Read` tool without the runtime treating them as independent skills discoverable from user intent.
 
-If a runtime's skill-discovery mechanism does not recognize the
-frontmatter-less convention, the sub-skill files should be renamed
-(e.g., to `AGENT.md`) as a runtime-specific adaptation. The root
-`skills/robin-kernel/SKILL.md`'s internal references can then be updated to the
-new filename. This is purely a runtime-adapter concern, not a change to
-the abstract design.
+If a runtime's skill-discovery mechanism does not recognize the frontmatter-less convention, the sub-skill files should be renamed (e.g. to `AGENT.md`) as a runtime-specific adaptation. The kernel skill's internal references can then be updated to the new filename. This is purely a runtime-adapter concern, not a change to the abstract design.
 
 ---
 
-## 9. 一句话总结
+## 9. One-line summary
 
-> **AI-Robin 是一个 NLP runtime: Intake Agent 是唯一的 human interface;
-> Main agent 是永远 light 的 kernel; Planning/Scheduler/Execute/Review
-> 是按 stage 串起来的 stateless sub-agents; Session ledger 是 append-only 的
-> audit log; Review 是按 change 性质动态 fan-out 的 domain-specific checks;
-> 所有 state 以 Feature Room 格式写到 disk; Graceful degradation 替代 human
-> escalation。**
+> **Robin is an NLP runtime: Intake is the only human interface; the main agent is a forever-light kernel; Planner / Scheduler / Executor / Review are stateless sub-agents wired through stages; the session ledger is an append-only audit log; Review is a domain-specific fan-out per change; all state is persisted in Feature Room format on disk; graceful degradation replaces human escalation.**
