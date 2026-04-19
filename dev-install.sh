@@ -1,15 +1,21 @@
 #!/usr/bin/env bash
-# Robin — Install / Uninstall local-dev shell alias (dual-mode: source or execute)
+# Robin — Local-dev shell alias installer (contributors only; end-users install from marketplace)
+#
+# Adds a `claude-robin` alias that runs `claude --plugin-dir <this repo>`,
+# so edits to the source are picked up live (via /reload-plugins mid-session).
+# End-users should use `/plugin marketplace add waynewangyuxuan/Robin` instead.
+#
+# Dual-mode: source or execute
 #
 # Recommended (alias active immediately in current shell):
-#   source ./install.sh
+#   source ./dev-install.sh
 #
 # Also works as a plain script (alias only active in NEW shells until you
 # run `source ~/.zshrc`):
-#   ./install.sh
+#   ./dev-install.sh
 #
 # Subcommands:
-#   source ./install.sh remove   # or:  ./install.sh remove
+#   source ./dev-install.sh remove   # or:  ./dev-install.sh remove
 
 # ─── Detect whether we are sourced or executed ──────────
 if (return 0 2>/dev/null); then
@@ -32,8 +38,8 @@ REPO_ROOT="$(cd "$(dirname "$_ROBIN_SCRIPT")" 2>/dev/null && pwd)"
 
 ALIAS_NAME="claude-robin"
 ALIAS_LINE="alias ${ALIAS_NAME}='claude --plugin-dir ${REPO_ROOT}'"
-MARKER_BEGIN="# >>> robin plugin alias (managed by install.sh) >>>"
-MARKER_END="# <<< robin plugin alias (managed by install.sh) <<<"
+MARKER_BEGIN="# >>> robin plugin alias (managed by dev-install.sh) >>>"
+MARKER_END="# <<< robin plugin alias (managed by dev-install.sh) <<<"
 
 # Bail helper: return when sourced, exit when executed
 _robin_bail() {

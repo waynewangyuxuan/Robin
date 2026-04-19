@@ -42,11 +42,11 @@ If you're editing Robin itself and want changes to reflect live (no copy / no pi
 ```bash
 git clone https://github.com/waynewangyuxuan/Robin.git
 cd Robin
-source ./install.sh                 # adds `claude-robin` alias, active immediately
+source ./dev-install.sh             # adds `claude-robin` alias, active immediately
 claude-robin                        # start Claude Code with Robin loaded from your source
 ```
 
-After editing skills, agents, or hooks mid-session, run `/reload-plugins` to refresh without restarting. Uninstall the alias with `./install.sh remove`.
+After editing skills, agents, or hooks mid-session, run `/reload-plugins` to refresh without restarting. Uninstall the alias with `./dev-install.sh remove`.
 
 ### Commands
 
