@@ -24,21 +24,31 @@ Robin is an autonomous multi-agent workflow that takes a one-shot human brief an
 
 ## Quick start
 
-Robin is not on a plugin marketplace yet. The recommended path is to install a `claude-robin` shell alias that wraps `claude --plugin-dir <this repo>`:
+### Install from the marketplace (recommended)
 
-```bash
-./install.sh                        # add `claude-robin` alias to your shell rc
-source ~/.zshrc                     # or open a new terminal
-claude-robin                        # start a Claude Code session with Robin loaded
+Inside a Claude Code session:
+
+```
+/plugin marketplace add waynewangyuxuan/Robin
+/plugin install robin@robin
 ```
 
-Source edits are picked up live — run `/reload-plugins` mid-session to refresh skills, agents, or hooks without restarting. Uninstall with `./install.sh remove`.
+`/robin-start`, `/robin-resume`, and `/robin-status` become available in every session. Claude Code auto-pulls updates from this repo's default branch on restart.
 
-If you don't want a permanent alias, the raw command works too:
+### Install for local development
+
+If you're editing Robin itself and want changes to reflect live (no copy / no pin):
 
 ```bash
-claude --plugin-dir /path/to/AI-Robin-Skill
+git clone https://github.com/waynewangyuxuan/Robin.git
+cd Robin
+source ./install.sh                 # adds `claude-robin` alias, active immediately
+claude-robin                        # start Claude Code with Robin loaded from your source
 ```
+
+After editing skills, agents, or hooks mid-session, run `/reload-plugins` to refresh without restarting. Uninstall the alias with `./install.sh remove`.
+
+### Commands
 
 | Command | When |
 |---|---|

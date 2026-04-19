@@ -1,0 +1,13 @@
+{
+  "name": "robin",
+  "owner": {
+    "name": "waynewangyuxuan"
+  },
+  "plugins": [
+    {
+      "name": "robin",
+      "source": "./",
+      "description": "Autonomous multi-agent software development workflow: Intake → Planning → Scheduler → Executor × N → Review. One-shot human brief in, software project out."
+    }
+  ]
+}
