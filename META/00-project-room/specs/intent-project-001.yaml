@@ -1,0 +1,40 @@
+spec_id: intent-project-001
+type: intent
+state: active
+
+intent:
+  summary: "AI-Robin turns a one-shot human intake into an autonomously-delivered software project via a dispatched multi-agent workflow."
+  detail: |
+    AI-Robin is a Claude Code plugin providing a kernel + sub-agent orchestration
+    for end-to-end software delivery. The user invokes `/robin-start <brief>`;
+    the kernel runs Intake (human-facing), then auto-pilots through
+    Planning → Scheduling → Execution → Review → Merging → Committing →
+    (optional Degrading) → Finalizing.
+
+    AI-Robin is a framework, not a domain expert — it deliberately does not
+    embed frontend / backend / devops / business-logic knowledge. Domain
+    knowledge attaches via capability packs
+    (see decision-pack-as-dependency-001).
+
+constraints: []
+
+indexing:
+  type: intent
+  priority: P0
+  layer: project
+  domain: "meta"
+  tags: ["project-identity"]
+
+provenance:
+  source_type: manual_input
+  confidence: 1.0
+  source_ref: "Established at project inception; canonical detail in DESIGN.md"
+  produced_by_agent: "wayne"
+  produced_at: "2026-04-20T00:00:00Z"
+
+relations: []
+
+anchors:
+  - file: "DESIGN.md"
+  - file: "README.md"
+  - file: "skills/robin-kernel/SKILL.md"

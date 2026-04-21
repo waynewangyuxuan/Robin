@@ -1,0 +1,42 @@
+spec_id: decision-protocol-before-ui-001
+type: decision
+state: active
+
+intent:
+  summary: "Observability and intervention features must define the underlying protocol (pause points, resume contracts, structured events) before any UI layer is built."
+  detail: |
+    **Decision**: When considering features like a multi-run dashboard
+    or mid-run user intervention, the design sequence is:
+    1. define pause points / state boundaries,
+    2. define resume contracts (what input each pause requires),
+    3. make ledger events structured and parseable,
+    4. ONLY THEN consider UI.
+
+    **Rationale**: A UI built without a protocol is either cosmetic
+    (read-only dashboards nobody uses) or brittle (UIs that leak
+    internal state shapes). A well-defined protocol lets us build CLI,
+    web, or IDE UIs interchangeably and evolve them without backend
+    rewrites.
+
+    **Tracked by**: issue #10 (intervention protocol + dashboard)
+    and issue #9 (structured ledger event schema).
+
+constraints: []
+
+indexing:
+  type: decision
+  priority: P1
+  layer: project
+  domain: "meta"
+  tags: ["architecture", "philosophy", "observability"]
+
+provenance:
+  source_type: chat_extraction
+  confidence: 1.0
+  source_ref: "Roadmap discussion 2026-04-20"
+  produced_by_agent: "wayne"
+  produced_at: "2026-04-20T00:00:00Z"
+
+relations: []
+
+anchors: []

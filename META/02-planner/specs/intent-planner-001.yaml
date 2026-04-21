@@ -1,0 +1,43 @@
+spec_id: intent-planner-001
+type: intent
+state: active
+
+intent:
+  summary: "Turn Intake's specs into an executable plan: milestones, module boundaries, inter-module contracts."
+  detail: |
+    Planner transforms Intake's intent / constraint / context specs into
+    a concrete execution plan. It produces:
+
+    - `decision-*` specs (technology / architecture choices)
+    - `contract-*` specs (inter-module interfaces — the most important
+      spec type for AI-Robin, since Executor only sees contracts, not
+      each other's code)
+    - `constraint-*` derived from architecture
+    - milestones with explicit dependency ordering
+
+    Planner may signal `planning_needs_research` to invoke Researcher
+    for factual gaps, re-spawn for sub-planning, or trigger a replan
+    on post-review feedback. Owns the `00-robin-plan/` room where
+    planning artifacts live.
+
+constraints: []
+
+indexing:
+  type: intent
+  priority: P0
+  layer: feature
+  domain: "agent-planner"
+  tags: ["agent-role", "dispatch-loop"]
+
+provenance:
+  source_type: manual_input
+  confidence: 1.0
+  source_ref: "Codified from skills/robin-planner/SKILL.md as of 2026-04-20"
+  produced_by_agent: "wayne"
+  produced_at: "2026-04-20T00:00:00Z"
+
+relations: []
+
+anchors:
+  - file: "skills/robin-planner/SKILL.md"
+  - file: "agents/robin-planner.md"

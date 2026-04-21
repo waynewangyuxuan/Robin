@@ -1,0 +1,41 @@
+tree:
+  rooms:
+    - id: "00-project-room"
+      path: "00-project-room/"
+      lifecycle: in-dev
+    - id: "01-intake"
+      path: "01-intake/"
+      lifecycle: in-dev
+    - id: "02-planner"
+      path: "02-planner/"
+      lifecycle: in-dev
+    - id: "03-scheduler"
+      path: "03-scheduler/"
+      lifecycle: in-dev
+    - id: "04-executor"
+      path: "04-executor/"
+      lifecycle: in-dev
+    - id: "05-review-planner"
+      path: "05-review-planner/"
+      lifecycle: in-dev
+    - id: "06-reviewer"
+      path: "06-reviewer/"
+      lifecycle: in-dev
+    - id: "07-merger"
+      path: "07-merger/"
+      lifecycle: in-dev
+    - id: "08-committer"
+      path: "08-committer/"
+      lifecycle: in-dev
+    - id: "09-degrader"
+      path: "09-degrader/"
+      lifecycle: in-dev
+    - id: "10-finalizer"
+      path: "10-finalizer/"
+      lifecycle: in-dev
+    - id: "11-researcher"
+      path: "11-researcher/"
+      lifecycle: in-dev
+    - id: "12-kernel"
+      path: "12-kernel/"
+      lifecycle: in-dev

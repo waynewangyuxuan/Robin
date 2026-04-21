@@ -1,0 +1,9 @@
+project:
+  id: "ai-robin"
+  name: "AI-Robin"
+  description: "Autonomous multi-agent software delivery workflow — a Claude Code plugin that turns a one-shot brief into a delivered codebase."
+  created_at: "2026-04-17"
+  updated_at: "2026-04-20"
+  canonical_design_doc: "DESIGN.md"
+  readme: "README.md"
+  meta_self_dogfood: true   # this META/ is authored by the project that defines META/ — intentional

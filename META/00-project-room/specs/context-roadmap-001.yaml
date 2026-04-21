@@ -1,0 +1,48 @@
+spec_id: context-roadmap-001
+type: context
+state: active
+
+intent:
+  summary: "Current post-MVP roadmap for AI-Robin. Canonical tracking is on GitHub issues; this spec is a snapshot + suggested sequencing."
+  detail: |
+    **Snapshot as of 2026-04-20.** Canonical source: GitHub issues
+    <https://github.com/waynewangyuxuan/Robin/issues>.
+
+    | # | Scope | Notes |
+    |---|---|---|
+    | #3 | Auto-worktree per Robin run | Foundational; unlocks #8, #10 |
+    | #4 | Mid-run HITL checkpoint | Related to #6, may merge with #10 |
+    | #5 | Domain capability pack system | Biggest quality lever; most design-sensitive |
+    | #6 | Post-run Q&A / acceptance agent | Complements #4 (different timing) |
+    | #7 | Intake code-extraction source | Enables existing-project use via same Feature Room |
+    | #8 | Auto-approve mode (worktree + allowlist + tool lockdown) | Depends on #3 |
+    | #9 | Robin stdlib (bin/) + structured ledger schema | Low-cost; unblocks #10 |
+    | #10 | Intervention protocol + dashboard | Depends on #3 + #9; see decision-protocol-before-ui-001 |
+
+    **Suggested sequence** (debatable):
+    `#3 → #9 → #8 → #7 → #6 → #5 → #10`.
+
+    **Out of scope**:
+    - A "lite robin" for trivial tasks — plain Claude Code conversation
+      is already the lightweight path (originally point 4 of the roadmap
+      discussion, explicitly dropped).
+
+constraints: []
+
+indexing:
+  type: context
+  priority: P1
+  layer: project
+  domain: "meta"
+  tags: ["roadmap", "current-focus"]
+
+provenance:
+  source_type: chat_extraction
+  confidence: 1.0
+  source_ref: "Roadmap discussion 2026-04-20, issues #3-#10"
+  produced_by_agent: "wayne"
+  produced_at: "2026-04-20T00:00:00Z"
+
+relations: []
+
+anchors: []

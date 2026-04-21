@@ -1,0 +1,40 @@
+spec_id: intent-finalizer-001
+type: intent
+state: active
+
+intent:
+  summary: "Generate the end-of-run delivery bundle (.ai-robin/DELIVERY.md) summarizing what was built vs degraded."
+  detail: |
+    Finalizer runs on `all_complete`. It scans the ledger and reads
+    intent specs to compose a human-facing delivery summary:
+
+    - milestones delivered
+    - milestones degraded (with pointers to context-degraded-*.yaml)
+    - known limitations / agent-proxy decisions that need user review
+    - suggested next steps
+
+    Finalizer does not modify application code — only writes
+    `DELIVERY.md`. It is the last touchpoint before a Robin run ends,
+    and the primary read surface for the user when they come back.
+
+constraints: []
+
+indexing:
+  type: intent
+  priority: P0
+  layer: feature
+  domain: "agent-finalizer"
+  tags: ["agent-role", "dispatch-loop", "delivery-surface"]
+
+provenance:
+  source_type: manual_input
+  confidence: 1.0
+  source_ref: "Codified from skills/robin-finalizer/SKILL.md as of 2026-04-20"
+  produced_by_agent: "wayne"
+  produced_at: "2026-04-20T00:00:00Z"
+
+relations: []
+
+anchors:
+  - file: "skills/robin-finalizer/SKILL.md"
+  - file: "agents/robin-finalizer.md"

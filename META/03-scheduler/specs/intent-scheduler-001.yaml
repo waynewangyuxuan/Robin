@@ -1,0 +1,37 @@
+spec_id: intent-scheduler-001
+type: intent
+state: active
+
+intent:
+  summary: "Read the plan + current progress; decide which milestones run in the next batch and at what concurrency (parallel / sequential / mixed)."
+  detail: |
+    Scheduler is read-mostly. Each dispatch loop iteration, it reads the
+    current plan and progress, picks milestones that are ready
+    (dependencies satisfied per the milestone graph), and assigns them
+    to a batch with declared concurrency.
+
+    Scheduler does not produce Feature Room specs — its output is a
+    batch manifest consumed by Executor. Concurrency rules live in
+    `skills/robin-scheduler/concurrency-rules.md`.
+
+constraints: []
+
+indexing:
+  type: intent
+  priority: P0
+  layer: feature
+  domain: "agent-scheduler"
+  tags: ["agent-role", "dispatch-loop"]
+
+provenance:
+  source_type: manual_input
+  confidence: 1.0
+  source_ref: "Codified from skills/robin-scheduler/SKILL.md as of 2026-04-20"
+  produced_by_agent: "wayne"
+  produced_at: "2026-04-20T00:00:00Z"
+
+relations: []
+
+anchors:
+  - file: "skills/robin-scheduler/SKILL.md"
+  - file: "agents/robin-scheduler.md"

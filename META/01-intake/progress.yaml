@@ -1,0 +1,10 @@
+progress:
+  completion: 1.0    # MVP methodology delivered; roadmap extensions tracked globally
+  milestones:
+    - id: mvp-methodology
+      name: "MVP Intake methodology authored"
+      status: completed
+      completed_at: "2026-04-18"
+      gate: false
+      evidence: ["skills/robin-intake/SKILL.md"]
+  commits: []

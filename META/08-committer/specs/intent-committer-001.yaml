@@ -1,0 +1,42 @@
+spec_id: intent-committer-001
+type: intent
+state: active
+
+intent:
+  summary: "Execute a git commit on the kernel's behalf using the verbatim message provided by Merger or Degrader. Never composes commit messages itself."
+  detail: |
+    Committer is the only agent that runs `git commit`. The message is
+    supplied by Merger (successful batch) or Degrader (degradation
+    commit) — Committer does not modify, re-word, or re-order.
+
+    Committer MUST NOT:
+    - use `--no-verify` or `--no-gpg-sign`
+    - amend previous commits (always a new commit on failure + retry)
+    - push (push is out of Robin's scope by default)
+
+    Committer MAY:
+    - retry staging + commit on non-fatal failures
+    - surface a dispatch signal if commit fails repeatedly, so kernel
+      can route to Degrader
+
+constraints: []
+
+indexing:
+  type: intent
+  priority: P0
+  layer: feature
+  domain: "agent-committer"
+  tags: ["agent-role", "dispatch-loop", "shell-side-effect"]
+
+provenance:
+  source_type: manual_input
+  confidence: 1.0
+  source_ref: "Codified from skills/robin-committer/SKILL.md as of 2026-04-20"
+  produced_by_agent: "wayne"
+  produced_at: "2026-04-20T00:00:00Z"
+
+relations: []
+
+anchors:
+  - file: "skills/robin-committer/SKILL.md"
+  - file: "agents/robin-committer.md"

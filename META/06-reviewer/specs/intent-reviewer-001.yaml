@@ -1,0 +1,39 @@
+spec_id: intent-reviewer-001
+type: intent
+state: active
+
+intent:
+  summary: "Evaluate a batch's changed code against a domain-specific checklist; emit a structured verdict."
+  detail: |
+    Generic review flow shared by all domain reviewers. Loads scope
+    (the batch's changes + relevant specs), walks a domain checklist
+    from `skills/robin-reviewer/domains/{domain}.md`, and emits a
+    `review-verdict` (pass / warn / fail with observations).
+
+    Robin dispatches N Reviewer instances per batch, one per selected
+    domain (Review-Planner chooses). Domain checklists are pluggable —
+    adding a new domain is a new file in `domains/`, no kernel change.
+
+constraints: []
+
+indexing:
+  type: intent
+  priority: P0
+  layer: feature
+  domain: "agent-reviewer"
+  tags: ["agent-role", "dispatch-loop", "domain-pluggable"]
+
+provenance:
+  source_type: manual_input
+  confidence: 1.0
+  source_ref: "Codified from skills/robin-reviewer/SKILL.md as of 2026-04-20"
+  produced_by_agent: "wayne"
+  produced_at: "2026-04-20T00:00:00Z"
+
+relations: []
+
+anchors:
+  - file: "skills/robin-reviewer/SKILL.md"
+  - file: "skills/robin-reviewer/domains/code-quality.md"
+  - file: "agents/robin-reviewer-code-quality.md"
+  - file: "contracts/review-verdict.md"

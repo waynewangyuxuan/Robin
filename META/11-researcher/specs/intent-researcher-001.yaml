@@ -1,0 +1,44 @@
+spec_id: intent-researcher-001
+type: intent
+state: active
+
+intent:
+  summary: "Answer a specific factual question that Planner needs to finalize its plan. Uses web search + targeted analysis to produce structured findings with confidence."
+  detail: |
+    Researcher is invoked on-demand by Planner via the
+    `planning_needs_research` dispatch signal. It takes a narrow
+    factual question (e.g. "which auth providers support this feature
+    combo", "does library X have a stable Y API"), performs web search
+    and targeted analysis, and returns a structured `research-*.yaml`
+    spec with:
+
+    - the question (verbatim)
+    - the answer (with citations)
+    - confidence (per `stdlib/confidence-scoring.md`)
+
+    Planner then resumes with the research folded into its decisions.
+    Researcher does not make plan decisions itself — it supplies
+    information; Planner decides how to use it.
+
+constraints: []
+
+indexing:
+  type: intent
+  priority: P0
+  layer: feature
+  domain: "agent-researcher"
+  tags: ["agent-role", "side-channel", "factual"]
+
+provenance:
+  source_type: manual_input
+  confidence: 1.0
+  source_ref: "Codified from skills/robin-researcher/SKILL.md as of 2026-04-20"
+  produced_by_agent: "wayne"
+  produced_at: "2026-04-20T00:00:00Z"
+
+relations: []
+
+anchors:
+  - file: "skills/robin-researcher/SKILL.md"
+  - file: "agents/robin-researcher.md"
+  - file: "stdlib/confidence-scoring.md"

@@ -1,0 +1,43 @@
+spec_id: convention-agent-split-001
+type: convention
+state: active
+
+intent:
+  summary: "Every sub-agent is expressed as two artifacts: a thin proxy in `agents/` (harness-facing) and full methodology in `skills/` (agent-facing). Agent files stay thin; substantive logic lives in skills."
+  detail: |
+    **Convention**: for each robin sub-agent:
+
+    - `agents/robin-{name}.md` — thin frontmatter + one-line description.
+      This is what the Claude Code harness uses to spawn the agent.
+    - `skills/robin-{name}/SKILL.md` — the actual prompt the agent reads
+      when it boots. May reference sub-files (`phases/`, `domains/`, …)
+      for long methodology.
+
+    **Rationale**: the harness requires agent definitions in `agents/`
+    with a specific frontmatter shape. The skills/ split keeps
+    methodology readable and versionable without constant frontmatter
+    churn. Contributors touching methodology edit `skills/`;
+    contributors touching agent wiring (tools, model, description)
+    edit `agents/`.
+
+constraints: []
+
+indexing:
+  type: convention
+  priority: P1
+  layer: project
+  domain: "meta"
+  tags: ["file-layout", "contribution-guide"]
+
+provenance:
+  source_type: manual_input
+  confidence: 1.0
+  source_ref: "Observed and codified from existing repo layout"
+  produced_by_agent: "wayne"
+  produced_at: "2026-04-20T00:00:00Z"
+
+relations: []
+
+anchors:
+  - file: "agents/"
+  - file: "skills/"

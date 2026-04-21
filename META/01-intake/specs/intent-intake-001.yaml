@@ -1,0 +1,41 @@
+spec_id: intent-intake-001
+type: intent
+state: active
+
+intent:
+  summary: "Conduct the one-time human Q&A at the start of a Robin run; surface decisions and gaps; produce planning-ready Feature Room specs."
+  detail: |
+    Intake is the only stage where a human is in the loop during a Robin
+    run. It ingests the user's brief, identifies gaps (missing stack,
+    missing constraints, ambiguous intent), asks prioritized questions,
+    and emits Feature Room specs (intent / constraint / convention /
+    context / decision) that downstream stages consume.
+
+    Intake is the only agent allowed to leave specs in `draft` state
+    (the rest auto-promote to `active` when self-check passes). When
+    Intake fills a gap on behalf of the user, the resulting spec is
+    tagged with `source_type: agent_proxy` and listed in the
+    `intake_complete` signal's `agent_proxy_decisions` field, so the
+    user can audit them at delivery.
+
+constraints: []
+
+indexing:
+  type: intent
+  priority: P0
+  layer: feature
+  domain: "agent-intake"
+  tags: ["agent-role", "dispatch-loop"]
+
+provenance:
+  source_type: manual_input
+  confidence: 1.0
+  source_ref: "Codified from skills/robin-intake/SKILL.md as of 2026-04-20"
+  produced_by_agent: "wayne"
+  produced_at: "2026-04-20T00:00:00Z"
+
+relations: []
+
+anchors:
+  - file: "skills/robin-intake/SKILL.md"
+  - file: "agents/robin-intake.md"

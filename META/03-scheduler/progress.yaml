@@ -1,0 +1,10 @@
+progress:
+  completion: 1.0
+  milestones:
+    - id: mvp-methodology
+      name: "MVP Scheduler methodology authored"
+      status: completed
+      completed_at: "2026-04-18"
+      gate: false
+      evidence: ["skills/robin-scheduler/SKILL.md"]
+  commits: []

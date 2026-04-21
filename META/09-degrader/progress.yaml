@@ -1,0 +1,12 @@
+progress:
+  completion: 1.0
+  milestones:
+    - id: mvp-methodology
+      name: "MVP Degrader methodology authored"
+      status: completed
+      completed_at: "2026-04-18"
+      gate: false
+      evidence:
+        - "skills/robin-degrader/SKILL.md"
+        - "stdlib/degradation-policy.md"
+  commits: []

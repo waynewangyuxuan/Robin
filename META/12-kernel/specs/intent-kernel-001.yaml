@@ -1,0 +1,50 @@
+spec_id: intent-kernel-001
+type: intent
+state: active
+
+intent:
+  summary: "Orchestrate the full dispatch loop — Intake → Planning → Scheduling → Executing → Reviewing → Merging → Committing → (Degrading) → Finalizing — by routing sub-agent return signals. Produces no Feature Room specs."
+  detail: |
+    Kernel is the main agent, loaded by `/robin-start` (new run) or
+    `/robin-resume` (resume interrupted run). It does not write
+    application code and does not write Feature Room specs. Its
+    responsibilities:
+
+    1. Own stage-state (`.ai-robin/stage-state.json`) and session-ledger
+       (`.ai-robin/ledger.*`); transition them per dispatch signals.
+    2. Dispatch sub-agents per `contracts/dispatch-signal.md` routing.
+    3. Enforce autonomy policies from `skills/robin-kernel/discipline.md`
+       — iteration budgets, escalation, degradation triggers.
+
+    Kernel is domain-agnostic by construction (see
+    decision-kernel-agnostic-001). Nearly all roadmap extensions touch
+    kernel wiring.
+
+constraints: []
+
+indexing:
+  type: intent
+  priority: P0
+  layer: feature
+  domain: "agent-kernel"
+  tags: ["agent-role", "orchestration", "main-agent"]
+
+provenance:
+  source_type: manual_input
+  confidence: 1.0
+  source_ref: "Codified from skills/robin-kernel/SKILL.md as of 2026-04-20"
+  produced_by_agent: "wayne"
+  produced_at: "2026-04-20T00:00:00Z"
+
+relations:
+  - type: relates_to
+    ref: decision-kernel-agnostic-001
+
+anchors:
+  - file: "skills/robin-kernel/SKILL.md"
+  - file: "skills/robin-kernel/discipline.md"
+  - file: "commands/robin-start.md"
+  - file: "commands/robin-resume.md"
+  - file: "contracts/dispatch-signal.md"
+  - file: "contracts/session-ledger.md"
+  - file: "contracts/stage-state.md"

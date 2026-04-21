@@ -1,0 +1,46 @@
+spec_id: decision-pack-as-dependency-001
+type: decision
+state: active
+
+intent:
+  summary: "Capability packs are declared dependencies of a Robin run, not runtime-discovered. Planner tags milestones with domain; Executor loads the corresponding pack."
+  detail: |
+    **Decision**: When Robin gains domain-specific capability (exec / plan
+    stages), the activation model is:
+    1. user declares which capability packs the run depends on
+       (at `/robin-start` or via a manifest),
+    2. Planner infers / is told which milestones belong to which domain,
+       tagging each milestone,
+    3. Executor, upon picking up a tagged milestone, loads the matching
+       pack (checklist + prompt injection + tools).
+
+    **Why not MCP-style discovery**: Having the Executor read plugin
+    descriptions at runtime and decide which to use is unreliable —
+    description quality dominates outcomes, and the LLM's discovery
+    choices are hard to audit or constrain.
+
+    **Why not kernel-baked**: see decision-kernel-agnostic-001.
+
+    **Tracked by**: issue #5.
+
+constraints: []
+
+indexing:
+  type: decision
+  priority: P0
+  layer: project
+  domain: "meta"
+  tags: ["architecture", "philosophy", "plugins"]
+
+provenance:
+  source_type: chat_extraction
+  confidence: 1.0
+  source_ref: "Roadmap discussion 2026-04-20"
+  produced_by_agent: "wayne"
+  produced_at: "2026-04-20T00:00:00Z"
+
+relations:
+  - type: relates_to
+    ref: decision-kernel-agnostic-001
+
+anchors: []

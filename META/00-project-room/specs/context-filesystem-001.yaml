@@ -1,0 +1,57 @@
+spec_id: context-filesystem-001
+type: context
+state: active
+
+intent:
+  summary: "30-second filesystem map of the AI-Robin repo — what lives where, and how similar-looking directories differ."
+  detail: |
+    ```
+    ├── .claude-plugin/     # plugin manifest for Claude Code
+    ├── agents/             # thin agent proxies (harness-facing)
+    ├── commands/           # slash commands (/robin-start, /robin-resume, /robin-status)
+    ├── contracts/          # inter-agent data contracts
+    │                       #   dispatch-signal, session-ledger, stage-state,
+    │                       #   escalation-notice, review-verdict
+    ├── docs/               # architecture docs, mapping tables, long-form reference
+    ├── hooks/              # Claude Code hook scripts
+    ├── skills/             # full agent methodology (SKILL.md + phases/)
+    ├── stdlib/             # shared methodology modules
+    │                       #   feature-room-spec, anchor-tracking,
+    │                       #   confidence-scoring, degradation-policy,
+    │                       #   iteration-budgets, state-lifecycle
+    ├── tests/              # routing / trace tests
+    ├── META/               # this repo's own Feature Room (self-dogfood)
+    ├── DESIGN.md           # canonical design doc (25KB)
+    ├── README.md           # user-facing entry
+    └── dev-install.sh      # contributor dev install
+    ```
+
+    **Key distinctions** (easy to confuse):
+
+    - `agents/` vs `skills/` — see convention-agent-split-001.
+    - `contracts/` vs `stdlib/` — contracts define *interchange formats*
+      between agents; stdlib defines shared *reasoning methodology*.
+      New data field → contracts/. New heuristic → stdlib/.
+    - `docs/` vs `META/` — docs/ is human-facing prose reading;
+      META/ is structured, machine-readable project state.
+
+constraints: []
+
+indexing:
+  type: context
+  priority: P1
+  layer: project
+  domain: "meta"
+  tags: ["onboarding", "navigation"]
+
+provenance:
+  source_type: manual_input
+  confidence: 1.0
+  source_ref: "Filesystem snapshot as of 2026-04-20"
+  produced_by_agent: "wayne"
+  produced_at: "2026-04-20T00:00:00Z"
+
+relations: []
+
+anchors:
+  - file: "."

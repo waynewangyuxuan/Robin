@@ -1,0 +1,14 @@
+progress:
+  completion: 1.0
+  milestones:
+    - id: mvp-methodology
+      name: "MVP Kernel dispatch loop authored"
+      status: completed
+      completed_at: "2026-04-18"
+      gate: false
+      evidence:
+        - "skills/robin-kernel/SKILL.md"
+        - "skills/robin-kernel/discipline.md"
+        - "commands/robin-start.md"
+        - "commands/robin-resume.md"
+  commits: []

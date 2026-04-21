@@ -1,0 +1,17 @@
+progress:
+  completion: 0.4   # MVP delivered; roadmap extensions pending
+  milestones:
+    - id: mvp-runnable
+      name: "Core dispatch loop runnable end-to-end"
+      status: completed
+      completed_at: "2026-04-18"
+      gate: false
+      evidence:
+        - "DESIGN.md"
+        - "docs/superpowers/plans/2026-04-17-ai-robin-plan-1-make-it-runnable.md"
+    - id: roadmap-extensions
+      name: "Post-MVP extensions (worktree / HITL / capability packs / dashboard etc.)"
+      status: in_progress
+      gate: false
+      evidence: []   # canonical tracking on GitHub issues #3-#10
+  commits: []        # intentionally unused — git log is authoritative

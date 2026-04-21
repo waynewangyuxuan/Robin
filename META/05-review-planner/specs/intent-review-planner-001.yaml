@@ -1,0 +1,42 @@
+spec_id: intent-review-planner-001
+type: intent
+state: active
+
+intent:
+  summary: "Given a batch's change artifacts, decide which domain-specific reviewer playbooks to run."
+  detail: |
+    Meta-agent that selects which reviewers run for a batch.
+    `code-quality` is always-on; domain-specific reviewers
+    (frontend-a11y, backend-api, db-schema, etc.) are added based on
+    what the batch touches.
+
+    Emits a review plan that the kernel uses to dispatch Reviewer
+    instances in parallel. This agent embodies Robin's posture that
+    only the review stage has domain specialization today — and it
+    achieves domain awareness by delegation, not by the kernel
+    "knowing" domains.
+
+constraints: []
+
+indexing:
+  type: intent
+  priority: P0
+  layer: feature
+  domain: "agent-review-planner"
+  tags: ["agent-role", "dispatch-loop", "domain-selection"]
+
+provenance:
+  source_type: manual_input
+  confidence: 1.0
+  source_ref: "Codified from skills/robin-review-planner/SKILL.md as of 2026-04-20"
+  produced_by_agent: "wayne"
+  produced_at: "2026-04-20T00:00:00Z"
+
+relations:
+  - type: relates_to
+    ref: decision-pack-as-dependency-001
+    note: "Review-Planner is the precedent that capability pack system generalizes."
+
+anchors:
+  - file: "skills/robin-review-planner/SKILL.md"
+  - file: "agents/robin-review-planner.md"

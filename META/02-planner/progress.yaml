@@ -1,0 +1,10 @@
+progress:
+  completion: 1.0
+  milestones:
+    - id: mvp-methodology
+      name: "MVP Planner methodology authored"
+      status: completed
+      completed_at: "2026-04-18"
+      gate: false
+      evidence: ["skills/robin-planner/SKILL.md"]
+  commits: []

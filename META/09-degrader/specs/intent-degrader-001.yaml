@@ -1,0 +1,42 @@
+spec_id: intent-degrader-001
+type: intent
+state: active
+
+intent:
+  summary: "When a scope is abandoned, write the context-degraded-*.yaml narrative and update escalation-notice. Compose the commit message for the degradation commit."
+  detail: |
+    Degrader activates when the kernel decides to abandon a scope
+    (typically iteration-budget exhaustion or unresolvable review
+    failure — see `stdlib/degradation-policy.md`).
+
+    Degrader reads original specs + ledger history, composes a
+    narrative explaining what was attempted and why it was abandoned,
+    writes a `context-degraded-*.yaml` spec, and updates
+    `escalation-notice.md` so the user sees the issue at delivery.
+
+    The degradation commit message is also produced here (Committer
+    executes). This keeps all degradation-related policy in one place.
+
+constraints: []
+
+indexing:
+  type: intent
+  priority: P0
+  layer: feature
+  domain: "agent-degrader"
+  tags: ["agent-role", "dispatch-loop", "graceful-degradation"]
+
+provenance:
+  source_type: manual_input
+  confidence: 1.0
+  source_ref: "Codified from skills/robin-degrader/SKILL.md as of 2026-04-20"
+  produced_by_agent: "wayne"
+  produced_at: "2026-04-20T00:00:00Z"
+
+relations: []
+
+anchors:
+  - file: "skills/robin-degrader/SKILL.md"
+  - file: "agents/robin-degrader.md"
+  - file: "stdlib/degradation-policy.md"
+  - file: "contracts/escalation-notice.md"

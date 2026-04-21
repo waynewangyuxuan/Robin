@@ -1,0 +1,43 @@
+spec_id: intent-executor-001
+type: intent
+state: active
+
+intent:
+  summary: "Given a single milestone task, load relevant context, write/modify code and specs, return a structured artifacts summary. Does NOT git commit."
+  detail: |
+    Executor is the only agent that writes application code. For each
+    task it receives, it:
+
+    1. Loads relevant specs (intents, constraints, conventions,
+       contracts) and anchors for the module in scope.
+    2. Implements the change — writing/editing source files.
+    3. Updates affected specs to reflect new reality, recomputes anchor
+       content hashes.
+    4. Emits a `change-*.yaml` spec recording files changed, specs
+       updated, and a self-assessment.
+
+    Commit is delegated to Committer via the dispatch loop — Executor
+    never runs `git commit` itself. This separation keeps shell-level
+    side effects in a narrow agent (see Room 08).
+
+constraints: []
+
+indexing:
+  type: intent
+  priority: P0
+  layer: feature
+  domain: "agent-executor"
+  tags: ["agent-role", "dispatch-loop", "code-writing"]
+
+provenance:
+  source_type: manual_input
+  confidence: 1.0
+  source_ref: "Codified from skills/robin-executor/SKILL.md as of 2026-04-20"
+  produced_by_agent: "wayne"
+  produced_at: "2026-04-20T00:00:00Z"
+
+relations: []
+
+anchors:
+  - file: "skills/robin-executor/SKILL.md"
+  - file: "agents/robin-executor.md"

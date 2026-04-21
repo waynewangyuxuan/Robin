@@ -1,0 +1,50 @@
+spec_id: decision-kernel-agnostic-001
+type: decision
+state: active
+
+intent:
+  summary: "The Robin kernel and all core stages (Intake / Planner / Scheduler / Executor / Reviewer / Merger / Committer / Degrader / Finalizer) must remain domain-agnostic. Domain knowledge lives exclusively in capability packs."
+  detail: |
+    **Decision**: Do not embed frontend / backend / devops / business-logic
+    expertise into the kernel or its sub-agents.
+
+    **Rationale**: Robin's value proposition is being a general-purpose
+    orchestration OS. Embedding domain expertise at the kernel layer:
+    1. bloats the kernel and clouds its contracts,
+    2. couples kernel evolution to individual domains,
+    3. creates pressure to pick favorites (why is frontend first-class
+       but DevOps not?),
+    4. erodes the OS abstraction that lets arbitrary domain packs plug in.
+
+    **Existing precedent**: The review stage is the only stage today with
+    domain specialization, handled via a meta-agent (robin-review-planner)
+    that selects domain reviewer playbooks. The same pattern extends
+    to exec / plan domain support (see issue #5).
+
+    **Non-decision**: We do not decide whether domain packs are first-party
+    (shipped with robin) or third-party (user-installed). Both are valid
+    as long as they load through the same interface.
+
+constraints: []
+
+indexing:
+  type: decision
+  priority: P0
+  layer: project
+  domain: "meta"
+  tags: ["architecture", "philosophy"]
+
+provenance:
+  source_type: chat_extraction
+  confidence: 1.0
+  source_ref: "Roadmap discussion 2026-04-20"
+  produced_by_agent: "wayne"
+  produced_at: "2026-04-20T00:00:00Z"
+
+relations:
+  - type: relates_to
+    ref: decision-pack-as-dependency-001
+
+anchors:
+  - file: "DESIGN.md"
+  - file: "agents/robin-review-planner.md"
