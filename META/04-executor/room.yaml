@@ -4,7 +4,7 @@ room:
   parent: "00-project-room"
   lifecycle: in-dev
   created_at: "2026-04-20"
-  updated_at: "2026-04-20"
+  updated_at: "2026-04-22"
   owner: "ai-robin"
   contributors: []
   prompt_test:

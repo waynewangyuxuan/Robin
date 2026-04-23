@@ -3,6 +3,12 @@
 **Autonomy: guided** (for implementation details), **explicit**
 (for adherence to contracts and conventions)
 
+## Record phase start
+
+```bash
+echo "$(date -u +%s) phase-2-start" >> .ai-robin/trace/{invocation_id}.log
+```
+
 ## Internal planning first
 
 Before writing any code, produce an internal plan (scratch, not
@@ -55,6 +61,12 @@ you need to change something outside your scope:
 - If it's a real change (modifying another module's logic), STOP.
   Return `execute_failed` with `reason: "scope_insufficient"` — this
   is Scheduler's problem to solve.
+
+## Record phase end
+
+```bash
+echo "$(date -u +%s) phase-2-end" >> .ai-robin/trace/{invocation_id}.log
+```
 
 ## Output
 

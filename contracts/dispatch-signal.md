@@ -27,7 +27,10 @@ then moves to `processed/`.
   },
   "budget_consumed": {
     "tokens_estimated": "integer — rough token count this sub-agent used",
-    "wall_clock_seconds": "integer — how long the sub-agent ran"
+    "wall_clock_seconds": "integer — how long the sub-agent ran (estimated unless the agent instruments with timing probes)",
+    "phase_timings": {
+      "// OPTIONAL — per-phase wall-clock in seconds. Currently populated by Executor only (computed from .ai-robin/trace/{invocation_id}.log probes). Key names are agent-specific; Executor uses context_load_s / implement_s / anchors_s / selfcheck_s / emit_s.": null
+    }
   },
   "artifacts": [
     {

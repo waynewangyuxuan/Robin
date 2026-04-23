@@ -73,7 +73,15 @@ after the review stage. Execute just writes files to the working tree.
 | 2. Implement | `phases/phase-2-implement.md` | Plan changes internally, then write code following contracts strictly |
 | 3. Anchors | `phases/phase-3-anchors.md` | Update spec anchors to stay aligned with code |
 | 4. Self-check + change spec | `phases/phase-4-selfcheck-change.md` | Verify compile/contracts/scope/tests; write change-*.yaml |
-| 5. Emit | `phases/phase-5-emit.md` | Write execute_complete or execute_failed signal |
+| 5. Emit | `phases/phase-5-emit.md` | Compute phase_timings from trace log; write execute_complete or execute_failed signal |
+
+## Phase-timing instrumentation
+
+Every phase file opens with a `date -u +%s` probe that appends `<epoch> phase-N-start` to `.ai-robin/trace/{invocation_id}.log`, and closes with `phase-N-end`. Phase 5 reads the log back and populates `budget_consumed.phase_timings` in the signal, and the returned `wall_clock_seconds` is computed from the log rather than estimated.
+
+Rationale: Executor dominates Robin's cost profile (~55% of wall-clock in measured runs). Without per-phase timing we cannot tell whether that cost is context-load, implementation, self-check, or emit — so cannot target optimization. The probes cost ~5 extra Bash calls per invocation in exchange for authoritative per-phase data.
+
+The trace log is ephemeral: one file per invocation, left on disk for post-hoc analysis, never staged for commit.
 
 ## What you absolutely do not do
 

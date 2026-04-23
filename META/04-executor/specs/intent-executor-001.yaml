@@ -36,8 +36,15 @@ provenance:
   produced_by_agent: "wayne"
   produced_at: "2026-04-20T00:00:00Z"
 
-relations: []
+relations:
+  - type: relates_to
+    ref: decision-executor-phase-timing-001
 
 anchors:
   - file: "skills/robin-executor/SKILL.md"
+  - file: "skills/robin-executor/phases/phase-1-context.md"
+  - file: "skills/robin-executor/phases/phase-2-implement.md"
+  - file: "skills/robin-executor/phases/phase-3-anchors.md"
+  - file: "skills/robin-executor/phases/phase-4-selfcheck-change.md"
+  - file: "skills/robin-executor/phases/phase-5-emit.md"
   - file: "agents/robin-executor.md"

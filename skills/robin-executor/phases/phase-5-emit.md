@@ -2,6 +2,12 @@
 
 **Autonomy: explicit**
 
+## Record phase start
+
+```bash
+echo "$(date -u +%s) phase-5-start" >> .ai-robin/trace/{invocation_id}.log
+```
+
 Write the return signal to `.ai-robin/dispatch/inbox/`.
 
 ## Signal: `execute_complete`
@@ -76,6 +82,54 @@ Write to `.ai-robin/dispatch/inbox/{signal_id}.json`.
 `signal_id` format: `execute-{task_id}-{YYYYMMDDTHHMMSS}-{8-char-hex}`
 
 See `contracts/dispatch-signal.md` for full wrapping schema.
+
+## Compute phase timings from the trace log
+
+Before writing the final `budget_consumed` block, read back the trace log and compute real per-phase durations. This is the whole point of the phase-start/phase-end probes — the log is authoritative; do not estimate `wall_clock_seconds`.
+
+Read the log:
+
+```bash
+cat .ai-robin/trace/{invocation_id}.log
+```
+
+Each line is `<unix-epoch-seconds> <label>`. For each phase `N` in 1..5:
+
+```
+phase_N_duration = (phase-N-end epoch) - (phase-N-start epoch)
+```
+
+Record `phase-5-end` **immediately before** writing the signal file (so emit time is captured), then re-read the log and compute `phase_5_duration`:
+
+```bash
+echo "$(date -u +%s) phase-5-end" >> .ai-robin/trace/{invocation_id}.log
+```
+
+Compute total wall-clock from the earliest and latest log entries:
+
+```
+wall_clock_seconds = (last epoch in log) - (first epoch in log)
+```
+
+Populate `budget_consumed` in the signal wrapper (per `contracts/dispatch-signal.md`):
+
+```json
+"budget_consumed": {
+  "tokens_estimated": <your estimate>,
+  "wall_clock_seconds": <computed from log, NOT estimated>,
+  "phase_timings": {
+    "context_load_s": <phase_1_duration>,
+    "implement_s":    <phase_2_duration>,
+    "anchors_s":      <phase_3_duration>,
+    "selfcheck_s":    <phase_4_duration>,
+    "emit_s":         <phase_5_duration>
+  }
+}
+```
+
+If the trace log is missing or malformed (e.g. you skipped a phase-start probe), report what you have and set the missing phase's value to `null`. Do not fabricate.
+
+The trace log file is ephemeral bookkeeping — leave it on disk for post-hoc analysis; do not stage it for commit.
 
 ## After emitting
 

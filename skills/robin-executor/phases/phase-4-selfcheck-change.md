@@ -2,6 +2,12 @@
 
 **Autonomy: guided** (self-check); **explicit** (change spec format)
 
+## Record phase start
+
+```bash
+echo "$(date -u +%s) phase-4-start" >> .ai-robin/trace/{invocation_id}.log
+```
+
 ## Self-check first
 
 Before writing the change spec, review your own output:
@@ -104,6 +110,12 @@ and replan happens, it may go back to `pending`.
 
 Add a commit placeholder entry (the actual git hash is added by kernel
 post-commit).
+
+## Record phase end
+
+```bash
+echo "$(date -u +%s) phase-4-end" >> .ai-robin/trace/{invocation_id}.log
+```
 
 ## Output
 

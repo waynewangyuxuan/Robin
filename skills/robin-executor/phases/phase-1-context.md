@@ -2,6 +2,18 @@
 
 **Autonomy: guided** (per `skills/robin-executor/context-pulling.md`)
 
+## Record phase start
+
+Before anything else, run:
+
+```bash
+mkdir -p .ai-robin/trace && echo "$(date -u +%s) phase-1-start" >> .ai-robin/trace/{invocation_id}.log
+```
+
+Substitute `{invocation_id}` with the value from your input. This is the only timing substrate — `wall_clock_seconds` in your final signal will be computed from this log, not estimated.
+
+## Load specs
+
 Load the specs listed in `task.context_refs`. For each:
 
 - Read the spec yaml
@@ -37,6 +49,14 @@ From your loaded specs, build:
 - If this is greenfield, the scope is where files will be CREATED —
   they don't exist yet, that's fine
 
+## Record phase end
+
+Before advancing to Phase 2, run:
+
+```bash
+echo "$(date -u +%s) phase-1-end" >> .ai-robin/trace/{invocation_id}.log
+```
+
 ## Output
 
-A mental model ready for Phase 2. No disk writes yet.
+A mental model ready for Phase 2. No disk writes yet (the trace log is bookkeeping, not a real artifact).
