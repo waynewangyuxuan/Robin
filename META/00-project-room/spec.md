@@ -30,6 +30,9 @@ Three decisions shape most other trade-offs in this repo:
 - [`decision-protocol-before-ui-001`](specs/decision-protocol-before-ui-001.yaml) —
   intervention protocol and structured ledger events come before any
   dashboard UI.
+- [`decision-pause-point-unification-001`](specs/decision-pause-point-unification-001.yaml) —
+  mid-run intervention (#10) and human acceptance (#4) are one
+  mechanism: milestone acceptance is a specialization of a pause point.
 
 ## Conventions
 

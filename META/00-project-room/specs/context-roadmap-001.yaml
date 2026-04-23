@@ -5,19 +5,19 @@ state: active
 intent:
   summary: "Current post-MVP roadmap for AI-Robin. Canonical tracking is on GitHub issues; this spec is a snapshot + suggested sequencing."
   detail: |
-    **Snapshot as of 2026-04-20.** Canonical source: GitHub issues
+    **Snapshot as of 2026-04-22.** Canonical source: GitHub issues
     <https://github.com/waynewangyuxuan/Robin/issues>.
 
     | # | Scope | Notes |
     |---|---|---|
     | #3 | Auto-worktree per Robin run | Foundational; unlocks #8, #10 |
-    | #4 | Mid-run HITL checkpoint | Related to #6, may merge with #10 |
+    | ~~#4~~ | ~~Mid-run HITL checkpoint~~ | **Merged into #10** on 2026-04-22; see decision-pause-point-unification-001 |
     | #5 | Domain capability pack system | Biggest quality lever; most design-sensitive |
-    | #6 | Post-run Q&A / acceptance agent | Complements #4 (different timing) |
+    | #6 | Post-run Q&A / acceptance agent | Complements #10 (different timing: post-run vs in-flight) |
     | #7 | Intake code-extraction source | Enables existing-project use via same Feature Room |
     | #8 | Auto-approve mode (worktree + allowlist + tool lockdown) | Depends on #3 |
     | #9 | Robin stdlib (bin/) + structured ledger schema | Low-cost; unblocks #10 |
-    | #10 | Intervention protocol + dashboard | Depends on #3 + #9; see decision-protocol-before-ui-001 |
+    | #10 | Intervention protocol + dashboard (absorbs #4) | Depends on #3 + #9; see decision-protocol-before-ui-001 + decision-pause-point-unification-001 |
 
     **Suggested sequence** (debatable):
     `#3 → #9 → #8 → #7 → #6 → #5 → #10`.
@@ -39,9 +39,9 @@ indexing:
 provenance:
   source_type: chat_extraction
   confidence: 1.0
-  source_ref: "Roadmap discussion 2026-04-20, issues #3-#10"
+  source_ref: "Roadmap discussion 2026-04-20, issues #3-#10; updated 2026-04-22 after #4→#10 merge"
   produced_by_agent: "wayne"
-  produced_at: "2026-04-20T00:00:00Z"
+  produced_at: "2026-04-22T00:00:00Z"
 
 relations: []
 

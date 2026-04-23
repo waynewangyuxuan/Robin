@@ -1,0 +1,72 @@
+spec_id: decision-pause-point-unification-001
+type: decision
+state: active
+
+intent:
+  summary: "Mid-run human intervention and milestone-level human acceptance are one mechanism, not two. They are unified under the 'pause point' protocol tracked by issue #10."
+  detail: |
+    **Decision**: The mid-run intervention protocol (issue #10) is the
+    canonical mechanism for all in-flight human-in-the-loop interaction.
+    The originally-separate "Human Acceptance Stage" concept (issue #4)
+    is a *specialization* of a pause point — specifically, the
+    `milestone_merged` pause where the allowed user action includes
+    approve / reject / request-rework.
+
+    **What this means concretely**:
+    - There is one schema: pause point = { state_name, trigger,
+      resume_contract, allowed_user_actions }.
+    - "Acceptance" is not a new stage in the kernel. It is a pause-point
+      configuration applied at existing state boundaries (e.g. after
+      Merger, before Committer).
+    - Rejection / rework at a pause point routes through the same
+      resume contract as any other intervention — no dedicated
+      "acceptance rejection" path.
+    - Dashboard UI (if built) lists pause points uniformly; it does not
+      have a separate "acceptance queue" tab.
+
+    **Rationale**: #4 and #10 both describe "workflow pauses waiting on
+    a human." The only difference was abstraction level — #4 named one
+    specific checkpoint, #10 proposed the general protocol. Keeping both
+    would force us to either (a) build two parallel mechanisms and
+    duplicate resume-contract / UI work, or (b) eventually collapse
+    them anyway under technical debt pressure. Unifying now keeps the
+    kernel's state model small and makes downstream features (post-run
+    Q&A #6, dashboard, auto-approve #8's escape hatch) compose cleanly
+    against one concept.
+
+    **What's still open** (tracked by #10's 待讨论 section):
+    - Full pause-point schema (state_name / resume_contract /
+      allowed_user_actions enum).
+    - Default pause-point set and whether they're opt-in or opt-out.
+    - For milestone-level acceptance specifically: gating heuristic
+      (all vs. risk-filtered), rejection routing (Executor vs. Degrader).
+    - Relationship to `escalation-notice.md` / context-degraded flow.
+
+    **Consequence for #3 (auto-worktree)**: The run-state initialized
+    in the worktree must include a pause-point registry from day one,
+    even if the registry is empty in the MVP. Retrofitting pause hooks
+    onto an existing run-state is expensive.
+
+    **Tracked by**: issue #10 (absorbs issue #4 as of 2026-04-22).
+
+constraints: []
+
+indexing:
+  type: decision
+  priority: P1
+  layer: project
+  domain: "meta"
+  tags: ["architecture", "hitl", "intervention", "state-model"]
+
+provenance:
+  source_type: chat_extraction
+  confidence: 1.0
+  source_ref: "Issue review discussion 2026-04-22; merger of #4 into #10"
+  produced_by_agent: "wayne"
+  produced_at: "2026-04-22T00:00:00Z"
+
+relations:
+  - type: relates_to
+    ref: decision-protocol-before-ui-001
+
+anchors: []
