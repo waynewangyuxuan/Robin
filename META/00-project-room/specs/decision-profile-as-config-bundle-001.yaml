@@ -1,0 +1,100 @@
+spec_id: decision-profile-as-config-bundle-001
+type: decision
+state: active
+
+intent:
+  summary: "Per-run configuration (skill loadout, budgets, default review playbooks, etc) is bundled into named, reusable profiles stored locally per-machine. Profile is a first-class object, intended as the dashboard's primary cross-run comparison axis."
+  detail: |
+    **Decision**: The set of choices a user makes at Intake (which
+    CC skills go to which stage, what budgets apply, which review
+    playbooks default-on, etc) is named, saved, and reusable as a
+    **profile**.
+
+    **Shape**:
+
+    ```yaml
+    profile_id: webapp-default
+    description: "Next.js projects, my usual loadout"
+    skill_loadout:
+      intake: [/office-hours]
+      planning: [/plan-eng-review, /plan-design-review]
+      reviewer: [/code-review, /security-review]
+      executor_tools: [/gstack, /browse]
+    budgets:
+      wall_clock_total_seconds: 14400
+      review_iterations_per_batch: 2
+    review_playbooks_default: [code-quality, frontend-a11y]
+    ```
+
+    **Storage**: per-machine, local. Path TBD but follows the
+    "local log" pattern decided for cross-project skill stats —
+    likely `~/.ai-robin/profiles/{profile_id}.yaml`. No remote sync
+    in scope; profiles are not shared across machines for now.
+
+    **Composition model — single layer, no override**: A profile
+    is self-contained; clone-and-edit to specialize. Base/override
+    composition is deferred (YAGNI) until profile count actually
+    warrants it.
+
+    **Skill version model — follow latest, log the hash**: Profiles
+    do NOT pin to specific skill versions. The user's installed
+    skill is whatever it is at the moment of internalization. The
+    run ledger records `source_skill_hash` per internalized spec
+    (per `decision-skill-internalization-001`) so historical runs
+    remain attributable even if the skill evolves later.
+
+    **Why profile is dashboard-relevant**: Without profiles, the
+    natural unit for cross-run comparison is the individual skill,
+    which produces noisy / fragmented analytics. With profiles:
+    - Same profile, different projects → cost / success patterns
+    - Different profiles, similar projects → A/B-style comparison
+    - Recommendation surface: "this project resembles past runs of
+      profile X — try it"
+
+    Profile is therefore not metadata; it is the dashboard's
+    **first-class object**. This decision exists in part to commit
+    to that framing before the dashboard is built, so when it lands
+    profile is already populated and tracked.
+
+    **Relationship to skill internalization**: Profiles are the
+    composition layer above `decision-skill-internalization-001`.
+    Skill internalization handles "how a single skill becomes a
+    spec"; profile handles "how the user assembles many skills
+    into a coherent run config".
+
+    **Relationship to roadmap**: This and `decision-skill-internalization-001`
+    together expand the scope of issue #5 beyond what was originally
+    framed as "capability pack". Recommend tracking as #5a (skill
+    internalization) + #5b (profile model) so dashboard work
+    (#10) has a stable contract to depend on.
+
+    **Out of scope (for now)**:
+    - Sharing profiles across machines or teammates
+    - Profile inheritance / override layers
+    - Pinning skills to specific hashes inside a profile
+    - Auto-recommended profiles (separate work, depends on
+      enough run data accumulating)
+
+constraints: []
+
+indexing:
+  type: decision
+  priority: P1
+  layer: project
+  domain: "meta"
+  tags: ["architecture", "skill-system", "dashboard", "config"]
+
+provenance:
+  source_type: chat_extraction
+  confidence: 1.0
+  source_ref: "Capability-pack design conversation 2026-04-23"
+  produced_by_agent: "wayne"
+  produced_at: "2026-04-23T00:00:00Z"
+
+relations:
+  - type: relates_to
+    ref: decision-skill-internalization-001
+  - type: relates_to
+    ref: decision-kernel-agnostic-001
+
+anchors: []

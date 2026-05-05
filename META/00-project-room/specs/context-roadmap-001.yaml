@@ -5,27 +5,42 @@ state: active
 intent:
   summary: "Current post-MVP roadmap for AI-Robin. Canonical tracking is on GitHub issues; this spec is a snapshot + suggested sequencing."
   detail: |
-    **Snapshot as of 2026-04-20.** Canonical source: GitHub issues
+    **Snapshot as of 2026-04-23.** Canonical source: GitHub issues
     <https://github.com/waynewangyuxuan/Robin/issues>.
 
     | # | Scope | Notes |
     |---|---|---|
     | #3 | Auto-worktree per Robin run | Foundational; unlocks #8, #10 |
-    | #4 | Mid-run HITL checkpoint | Related to #6, may merge with #10 |
-    | #5 | Domain capability pack system | Biggest quality lever; most design-sensitive |
-    | #6 | Post-run Q&A / acceptance agent | Complements #4 (different timing) |
+    | ~~#4~~ | ~~Mid-run HITL checkpoint~~ | **Merged into #10** on 2026-04-22; see decision-pause-point-unification-001 |
+    | #5 | Skill internalization + profile model (was: "domain capability pack") | **Reframed 2026-04-23** — see decision-skill-internalization-001 + decision-profile-as-config-bundle-001. Recommend splitting into #5a (internalizer agent + Intake skill assignment) and #5b (profile model + storage + dashboard contract). |
+    | #6 | Post-run Q&A / acceptance agent | Complements #10 (different timing: post-run vs in-flight) |
     | #7 | Intake code-extraction source | Enables existing-project use via same Feature Room |
     | #8 | Auto-approve mode (worktree + allowlist + tool lockdown) | Depends on #3 |
     | #9 | Robin stdlib (bin/) + structured ledger schema | Low-cost; unblocks #10 |
-    | #10 | Intervention protocol + dashboard | Depends on #3 + #9; see decision-protocol-before-ui-001 |
+    | #10 | Intervention protocol + dashboard (absorbs #4) | Depends on #3 + #9 + **#5b** (profile is the dashboard's first-class object); see decision-protocol-before-ui-001 + decision-pause-point-unification-001 + decision-profile-as-config-bundle-001 |
 
     **Suggested sequence** (debatable):
-    `#3 → #9 → #8 → #7 → #6 → #5 → #10`.
+    `#3 → #9 → #8 → #7 → #6 → #5a → #5b → #10`.
+
+    **New axis surfaced 2026-04-22 (not yet a GitHub issue)**:
+    "Audit & reduce Claude-Code duplications" — outcome of the cost
+    analysis on /Users/waynewang/02-doc-scanner-wayne/.ai-robin which
+    showed Executor at ~55% of cost and trivial agents (Committer 0.2%,
+    Researcher 0%, Finalizer 2.1%) as rounding-error optimizations. See
+    `META/04-executor/specs/decision-executor-phase-timing-001.yaml`
+    for the first concrete output along this axis (per-phase
+    instrumentation). Reviewer effectiveness audit folds into #5
+    (the passthrough question is now "is Robin's reviewer effective
+    enough to justify its cost vs internalized user reviewer skills",
+    not a pure cost question).
 
     **Out of scope**:
     - A "lite robin" for trivial tasks — plain Claude Code conversation
       is already the lightweight path (originally point 4 of the roadmap
       discussion, explicitly dropped).
+    - MCP-server / hook / CLAUDE.md as part of the "external skill"
+      surface — see decision-skill-internalization-001; CC skills only
+      for now.
 
 constraints: []
 
@@ -39,9 +54,9 @@ indexing:
 provenance:
   source_type: chat_extraction
   confidence: 1.0
-  source_ref: "Roadmap discussion 2026-04-20, issues #3-#10"
+  source_ref: "Roadmap discussion 2026-04-20, issues #3-#10; updated 2026-04-22 after #4→#10 merge; updated 2026-04-23 after #5 reframe to skill-internalization + profile model"
   produced_by_agent: "wayne"
-  produced_at: "2026-04-20T00:00:00Z"
+  produced_at: "2026-04-23T00:00:00Z"
 
 relations: []
 

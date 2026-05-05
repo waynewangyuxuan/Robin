@@ -1,0 +1,78 @@
+spec_id: decision-executor-phase-timing-001
+type: decision
+state: active
+
+intent:
+  summary: "Executor instruments every phase with date-probe start/end markers written to .ai-robin/trace/{invocation_id}.log; Phase 5 computes per-phase durations and populates budget_consumed.phase_timings, and wall_clock_seconds is measured (not estimated) from the same log."
+  detail: |
+    **Decision**: Each of the five Executor phase files opens with
+    `echo "$(date -u +%s) phase-N-start" >> .ai-robin/trace/{invocation_id}.log`
+    and closes with the matching `phase-N-end`. Phase 5 reads the log
+    back, computes each phase's duration, derives the total wall-clock
+    from (last epoch - first epoch), and emits both fields inside
+    `budget_consumed` of the return signal.
+
+    **Rationale**: A post-hoc cost analysis of a real Robin run
+    (doc-scanner, 2026-04-18 → 2026-04-19, 89 processed signals,
+    ~1.28M tokens self-reported) showed Executor dominating the
+    cost profile — ~55% of self-reported wall-clock and ~54% of
+    tokens. At the same time, every Executor signal self-reported
+    `wall_clock_seconds` as a round multiple of 60 (420/360/300/240/180),
+    strongly suggesting the field was being estimated, not measured.
+    Without per-phase timing we can't tell whether Executor's cost
+    is context-load, implementation, self-check, or emit — so we
+    can't target optimization. Five extra `date` calls per invocation
+    is a small price for authoritative timing data that feeds every
+    future cost-reduction decision.
+
+    **Non-decision**: We do not (yet) instrument the other agents
+    the same way. Executor is by far the most expensive; returns on
+    instrumenting the rest are much smaller. Extending the pattern
+    to other agents is a later decision driven by whatever Executor
+    timing data surfaces.
+
+    **Contract change**: `contracts/dispatch-signal.md` adds
+    `budget_consumed.phase_timings` as OPTIONAL. Existing non-Executor
+    agents continue to emit only `tokens_estimated` + `wall_clock_seconds`
+    and remain schema-valid. Key names inside `phase_timings` are
+    agent-specific; Executor uses
+    `context_load_s / implement_s / anchors_s / selfcheck_s / emit_s`.
+
+    **Operational notes**:
+    - The trace log is ephemeral: one file per invocation under
+      `.ai-robin/trace/`, left on disk for post-hoc analysis,
+      never staged for commit.
+    - If the log is missing or malformed, Executor reports what
+      it has and sets the missing phase's value to `null`.
+      It does not fabricate timings.
+
+constraints: []
+
+indexing:
+  type: decision
+  priority: P1
+  layer: feature
+  domain: "agent-executor"
+  tags: ["instrumentation", "cost-analysis", "observability"]
+
+provenance:
+  source_type: chat_extraction
+  confidence: 1.0
+  source_ref: "Roadmap discussion 2026-04-22; cost analysis of /Users/waynewang/02-doc-scanner-wayne/.ai-robin"
+  produced_by_agent: "wayne"
+  produced_at: "2026-04-22T00:00:00Z"
+
+relations:
+  - type: relates_to
+    ref: intent-executor-001
+
+anchors:
+  - file: "skills/robin-executor/SKILL.md"
+    symbols: ["Phase-timing instrumentation"]
+  - file: "skills/robin-executor/phases/phase-1-context.md"
+  - file: "skills/robin-executor/phases/phase-2-implement.md"
+  - file: "skills/robin-executor/phases/phase-3-anchors.md"
+  - file: "skills/robin-executor/phases/phase-4-selfcheck-change.md"
+  - file: "skills/robin-executor/phases/phase-5-emit.md"
+  - file: "contracts/dispatch-signal.md"
+    symbols: ["budget_consumed.phase_timings"]

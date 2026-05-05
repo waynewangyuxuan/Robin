@@ -1,10 +1,24 @@
 spec_id: decision-pack-as-dependency-001
 type: decision
-state: active
+state: superseded
 
 intent:
-  summary: "Capability packs are declared dependencies of a Robin run, not runtime-discovered. Planner tags milestones with domain; Executor loads the corresponding pack."
+  summary: "[SUPERSEDED 2026-04-23 by decision-skill-internalization-001] Capability packs are declared dependencies of a Robin run, not runtime-discovered. Planner tags milestones with domain; Executor loads the corresponding pack."
   detail: |
+    **Status: SUPERSEDED on 2026-04-23 by `decision-skill-internalization-001`.**
+
+    The "capability pack" model below conflated *what to install* with
+    *how it activates inside Robin*, and used a Planner-tags /
+    Executor-loads activation flow that put too much intelligence
+    inside Robin's runtime stages. The successor decision separates
+    these concerns: skills are installed externally by the user (via
+    standard CC skill paths); Robin only handles *assignment at intake*
+    and *internalization into Feature Room specs*. Stages then read
+    those specs as part of their normal context-pull, no per-milestone
+    pack-load step.
+
+    --- Original decision content preserved below ---
+
     **Decision**: When Robin gains domain-specific capability (exec / plan
     stages), the activation model is:
     1. user declares which capability packs the run depends on
@@ -40,6 +54,8 @@ provenance:
   produced_at: "2026-04-20T00:00:00Z"
 
 relations:
+  - type: superseded_by
+    ref: decision-skill-internalization-001
   - type: relates_to
     ref: decision-kernel-agnostic-001
 

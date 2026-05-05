@@ -2,6 +2,14 @@
 
 **Autonomy: guided** (per `stdlib/anchor-tracking.md`)
 
+## Record phase start
+
+```bash
+echo "$(date -u +%s) phase-3-start" >> .ai-robin/trace/{invocation_id}.log
+```
+
+## Why this phase exists
+
 Specs stay useful only if their anchors stay aligned with code. Skipping
 this is how spec-code drift starts.
 
@@ -46,6 +54,12 @@ spec's claim is probably still true; the code just moved.
 Mark stale only if you changed the actual behavior the spec claimed
 (e.g., an endpoint that used to return X now returns Y). Stale specs
 are flagged for Review to evaluate.
+
+## Record phase end
+
+```bash
+echo "$(date -u +%s) phase-3-end" >> .ai-robin/trace/{invocation_id}.log
+```
 
 ## Output
 
