@@ -43,6 +43,10 @@ provenance:
 
 relations:
   - type: relates_to
+    ref: decision-skill-internalization-001
+  - type: relates_to
+    ref: decision-profile-as-config-bundle-001
+  - type: historical
     ref: decision-pack-as-dependency-001
 
 anchors:

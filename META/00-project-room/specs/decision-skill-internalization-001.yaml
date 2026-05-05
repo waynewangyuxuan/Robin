@@ -1,0 +1,112 @@
+spec_id: decision-skill-internalization-001
+type: decision
+state: active
+
+intent:
+  summary: "External Claude Code skills connect to Robin via an Intake-time internalization step that translates each skill into Feature Room specs co-located with the consuming stage. Robin stages inform their work with these specs; they never get replaced by the user skill itself. Tool-focused skills are handled separately as runtime-spawn stubs."
+  detail: |
+    **Decision**: When the user wants to bring an external CC skill into
+    a Robin run:
+
+    1. **Intake** enumerates available skills and lets the user assign
+       each to one or more stages (Planning / Reviewer / Executor / etc).
+       This is a human decision, not an LLM one — Robin is an execution
+       layer; intelligence about *which* skill suits *which* stage lives
+       with the user.
+
+    2. A new **internalizer agent** (to be built; will live in its own
+       room) reads each assigned skill and classifies it:
+       - **methodology-focused** (e.g. `/code-review`, `/plan-eng-review`):
+         the skill's value is "a way to think about the problem" — these
+         get **internalized into Feature Room specs** (typically
+         `convention` or `decision` type) co-located in the consuming
+         stage's room (e.g. `META/06-reviewer/specs/convention-from-skill-code-review.yaml`).
+       - **tool-focused** (e.g. `/gstack`, `/browse`, `/codex`): the
+         skill's value is "invoke an external tool and observe results"
+         — these can't be reduced to a static checklist; the internalizer
+         emits a **stub spec** that tells the consuming stage "to invoke
+         this capability at runtime, dispatch the `/{skill}` skill".
+
+    3. **Stages run unchanged** (`robin-planner`, `robin-reviewer`,
+       `robin-executor`, etc are all retained). They read the
+       internalized specs as part of their normal context-pull.
+       Methodology specs inform the prompt; tool stubs trigger an
+       in-stage sub-dispatch when the stage decides it needs that tool.
+
+    **Inform, not Replace**: Robin's own stage agents are never bypassed.
+    The user skill enriches Robin's stage execution with the user's
+    chosen viewpoint; it does not take over the stage.
+
+    **Why this shape**:
+    - **Contract problem dissolves**: the universe of "skills Robin must
+      adapt" shrinks from "everything in the wild" to "the few the user
+      explicitly assigned this run" — making per-skill internalization
+      tractable.
+    - **Multi-skill coexistence is free**: each user skill becomes its
+      own spec; Feature Room's existing priority/supersede mechanics
+      handle tension between them; no new collapse logic needed.
+    - **Robin stays an execution layer**: the kernel doesn't decide
+      skill choice; the intelligence about "which skill where" lives
+      with the human at intake.
+
+    **Mechanics**:
+    - Internalize **once per run** at the end of Intake. Cache by
+      `hash(skill-file-content) + internalizer-version` so a re-run
+      with unchanged skills skips the work.
+    - Internalized specs carry provenance fields:
+      `source_type: cc_skill`, `source_skill_id: <skill-name>`,
+      `source_skill_hash: <sha>` so the run ledger can attribute
+      stage behavior back to the skill it came from.
+    - Internalized specs live under the consuming stage's room
+      (option α). They are NOT staged for commit by default — they
+      are derived artifacts, regenerable from the source skill.
+
+    **Scope of "external" (current)**: CC skills only. MCP servers,
+    hooks, and CLAUDE.md are explicitly out of this decision's scope;
+    they may be revisited later under separate decisions.
+
+    **Open technical details (defer to implementation):**
+    - How internalizer detects methodology-vs-tool — likely some
+      combination of frontmatter description, scan for Bash/MCP tool
+      references in the skill body, optional `kind:` declaration in
+      frontmatter.
+    - Exact spec_type to emit (`convention` vs `decision` vs new
+      `skill-mirror` type).
+
+    **Relationship to capability packs**: This decision **supersedes**
+    `decision-pack-as-dependency-001`. The earlier "pack" model
+    (Planner tags milestone → Executor loads pack) was MCP-server
+    flavored and conflated *what to install* with *how it activates*.
+    The new model separates them: skills are installed externally (by
+    the user, in `~/.claude/skills/`); Robin only handles the
+    assign-and-internalize step.
+
+    **Tracked by**: issue #5 (capability pack), now reframed as
+    "skill internalization + profile model".
+
+constraints: []
+
+indexing:
+  type: decision
+  priority: P0
+  layer: project
+  domain: "meta"
+  tags: ["architecture", "philosophy", "skill-system", "internalizer"]
+
+provenance:
+  source_type: chat_extraction
+  confidence: 1.0
+  source_ref: "Capability-pack design conversation 2026-04-23"
+  produced_by_agent: "wayne"
+  produced_at: "2026-04-23T00:00:00Z"
+
+relations:
+  - type: supersedes
+    ref: decision-pack-as-dependency-001
+  - type: relates_to
+    ref: decision-kernel-agnostic-001
+  - type: relates_to
+    ref: decision-profile-as-config-bundle-001
+
+anchors:
+  - file: "DESIGN.md"
