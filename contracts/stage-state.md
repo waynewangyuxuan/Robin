@@ -21,7 +21,19 @@ in the ledger.
   "run_id": "string — unique id for this AI-Robin run",
   "project_root": "string — absolute path to the project being built",
 
-  "current_stage": "'intake' | 'planning' | 'execute-control' | 'execute' | 'review' | 'done'",
+  "current_stage": "'intake' | 'planning' | 'execute-control' | 'execute' | 'review' | 'paused_for_human' | 'done'",
+
+  "mode": "'new_project' | 'incremental_feature' | 'bug_fix' | 'pr_continuation' — Axis 1 intake mode; recorded at run start from /robin-start --mode (or auto-detect); read by Intake/Planner",
+
+  "run_mode": "'autonomous' | 'hybrid' | 'dev' — Axis 2 kernel run mode; controls default human_checkpoint policy on milestones; recorded at run start from /robin-start --run-mode (default 'autonomous')",
+
+  "pause": {
+    "// Present iff current_stage == 'paused_for_human'. Absent otherwise.": null,
+    "milestone_id": "string — the milestone whose human_checkpoint flag triggered the pause",
+    "paused_at": "ISO 8601",
+    "artifact_path": "string — path to .ai-robin/PAUSED-{milestone_id}.md",
+    "post_pause_routing": "string — what the kernel would have routed to next (e.g., 'scheduler:next_batch'); recorded so --ack can pick up exactly where the pre-pause routing left off"
+  },
 
   "stage_iterations": {
     "intake": "integer — usually 1",
@@ -77,7 +89,12 @@ in the ledger.
 ### `current_stage`
 The single word that tells the kernel which dispatch branch applies this turn.
 The special value `"done"` means the run has ended; the kernel should exit the
-loop.
+loop. The special value `"paused_for_human"` means the run is awaiting a
+`/robin-resume --ack|--abort|--replan` verb from the user — the kernel
+exits the loop just like `"done"` but resumes via the resume command
+rather than terminating. See `pause` field for details and
+`skills/robin-kernel/discipline.md` § "Pause artifact" for the
+PAUSED-*.md template.
 
 ### `stage_iterations`
 Counters. Used to check against iteration budgets. For example, if
@@ -175,10 +192,17 @@ the next invocation reads `stage-state.json` and resumes:
      (idempotent roles)
    - Execute / Research / Review sub-agents: re-dispatch with "this is a retry"
      flag; if they already wrote partial artifacts, pick up from there
-2. If `active_invocations` is empty but `current_stage != "done"`, something odd
-   happened (e.g., kernel was killed right after signal processing but before
-   spawning next). Kernel examines the last ledger entry and re-spawns whatever
-   the routing_decision said to spawn.
+2. If `active_invocations` is empty but `current_stage` is not `"done"` and
+   not `"paused_for_human"`, something odd happened (e.g., kernel was killed
+   right after signal processing but before spawning next). Kernel examines
+   the last ledger entry and re-spawns whatever the routing_decision said
+   to spawn.
+3. If `current_stage == "paused_for_human"`, this is a normal pause, not
+   an interruption. Kernel does NOT re-dispatch. The run resumes only when
+   the user invokes `/robin-resume` with one of `--ack` / `--abort` /
+   `--replan`. See `commands/robin-resume.md` for verb semantics; see
+   `skills/robin-kernel/discipline.md` § "Pause resume protocol" for the
+   kernel-side handling.
 
 ---
 

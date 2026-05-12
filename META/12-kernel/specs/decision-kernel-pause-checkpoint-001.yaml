@@ -109,6 +109,26 @@ intent:
     - `triggers_pause: true` → write `PAUSED-*.md`, transition to
       `paused_for_human`, exit loop
 
+    ## Artifact lifecycle
+
+    `PAUSED-{milestone_id}.md` is **append-only and never deleted**,
+    even after `/robin-resume --ack` continues the run. Reasons:
+
+    - The PAUSED file is part of the run's audit trail (what was the
+      user's review state at this milestone) and Finalizer reads it
+      when composing the delivery bundle for runs that had checkpoints.
+    - Deleting on resume would mean a second resume (e.g., the run is
+      killed before next checkpoint and resumed via the standard
+      interrupted-resume path) loses the previous pause record.
+    - The next pause writes `PAUSED-{milestone_id_2}.md` — different
+      filename — so accumulation is bounded by the number of
+      checkpoints in the run.
+
+    Kernel-side implication: writing the PAUSED file is unconditional
+    on transition into `paused_for_human`; reading it during resume is
+    optional (the kernel uses `stage-state.pause` for routing; the file
+    is for the human and for Finalizer).
+
     ## What this is NOT
 
     - Not a per-step (sub-milestone) pause. Granularity is milestone,

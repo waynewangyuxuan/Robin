@@ -100,7 +100,9 @@ determines what you do next.
 | `review_merged` | **Spawn Commit Agent** (not git directly) with `trigger_signal_type: 'review_merged'`, passing `payload.commit_message` verbatim + files to stage. Wait for `commit_complete`. Then route per `overall_status`: pass/pass_with_warnings → Scheduler next batch; fail + `review_iterations_per_batch` remaining → Planning replan; fail + exhausted → spawn Degradation Agent. |
 | `stage_exhausted` | Trigger degradation for this scope. Log. Continue other scopes if any. |
 | `all_complete` | **Spawn Finalization Agent** with plan summary. Wait for `delivery_bundle_ready`. Then write `run_end` ledger entry and exit. |
-| `commit_complete` | Append `commit` ledger entry from payload. Route per `trigger_signal_type`: `review_merged` → continue original review routing (next stage per verdict); `degradation_spec_written` → continue dispatch loop (typically Scheduler for next batch). On `success: false`, log `anomaly` (severity high) but continue the routing path. |
+| `commit_complete` | Append `commit` ledger entry from payload. **Pause-check** (Axis 2): if `success == true`, read `stage-state.current_batch.milestone_ids` to enumerate the milestones this commit just completed. For each, look up its `human_checkpoint` flag in the plan's progress.yaml (path from `stage-state.plan_pointer.plan_room`). If any milestone in the batch has `human_checkpoint: true`, transition to `paused_for_human` state — write `.ai-robin/PAUSED-{milestone_id}.md` (template in discipline.md § "Pause artifact") naming the first such milestone in lexicographic order; if multiple checkpoint milestones in one batch, list them all in the artifact's "What just completed" section. Populate `stage-state.pause` block, append `pause_for_human` ledger entry, then exit the dispatch loop (DO NOT spawn Scheduler). Otherwise route per `trigger_signal_type`: `review_merged` → continue original review routing (next stage per verdict); `degradation_spec_written` → continue dispatch loop (typically Scheduler for next batch). On `success: false`, skip pause-check, log `anomaly` (severity high), and continue the routing path. |
+| `setup_required` | **Exit run.** Terminal signal from Intake — META preconditions missing for the chosen mode. Write `run_end` ledger entry with `exit_reason: "setup_required"`. Surface `payload.user_next_action` to the user verbatim. Do not spawn anything further. See decision-intake-meta-detection-001. |
+| `intake_aborted` | **Exit run.** Terminal signal from Intake — user cancelled. Write `run_end` ledger entry with `exit_reason: "intake_aborted"`. Surface `payload.reason` to the user. Do not spawn anything further. |
 | `degradation_spec_written` | **Spawn Commit Agent** with `trigger_signal_type: 'degradation_spec_written'`, passing `payload.commit_message` and `payload.files_to_stage` verbatim. Wait for `commit_complete`. |
 | `delivery_bundle_ready` | Append `run_end` ledger entry with `exit_reason: "all_complete"`. Surface `bundle_path` to user. Exit dispatch loop. |
 
@@ -166,14 +168,24 @@ When AI-Robin is invoked for the first time on a project:
 
 1. Check if `.ai-robin/` exists in the project root
    - **If not**: this is a fresh run. Create the directory structure. Initialize
-     `stage-state.json` with `stage: "intake"`. Initialize `budgets.json` from
-     defaults in `stdlib/iteration-budgets.md`. Empty ledger.
-   - **If yes**: this is a resumed run (previous AI-Robin run was interrupted).
-     Read `stage-state.json` to know where to pick up. Tell the user: "Resuming
-     from stage X, iteration Y." Continue the dispatch loop.
+     `stage-state.json` with `stage: "intake"`, record `mode` and `run_mode`
+     from /robin-start arguments (or 'auto-detect'/'autonomous' defaults).
+     Initialize `budgets.json` from defaults in `stdlib/iteration-budgets.md`.
+     Empty ledger.
+   - **If yes**: this is a resumed run. Read `stage-state.json` to know where
+     to pick up:
+     - `current_stage == "paused_for_human"`: see "Pause resume protocol" in
+       `skills/robin-kernel/discipline.md`. The /robin-resume command's verb
+       (`--ack` / `--abort` / `--replan`) drives the next routing. Do NOT
+       auto-resume the dispatch loop — wait for the verb.
+     - Any other stage: previous run was interrupted (kill / disconnect).
+       Tell the user: "Resuming from stage X, iteration Y." Continue the
+       dispatch loop per the resumability rules in
+       `contracts/stage-state.md`.
 
 2. If this is a fresh run, the very first signal you need is from Intake Agent.
-   Spawn Intake Agent immediately with the user's raw input as the task spec.
+   Spawn Intake Agent immediately with the user's raw input as the task spec
+   plus the `mode` from stage-state (so Intake knows which phase set to run).
 
 3. For a fresh run, after spawning Intake, your turn is done. Wait for signal.
 
@@ -184,8 +196,14 @@ When AI-Robin is invoked for the first time on a project:
 - **Do not engage the user after intake.** Once Intake Agent returns
   `intake_complete`, the user is no longer your interlocutor until final delivery.
   If the user sends messages during execution, acknowledge them briefly and note
-  them in the ledger, but do not let them divert the workflow. Exception: if the
-  user sends an explicit `STOP` or `PAUSE`, see `skills/robin-kernel/discipline.md`.
+  them in the ledger, but do not let them divert the workflow. Exceptions:
+  (a) if the user sends an explicit `STOP` or `PAUSE`, see
+  `skills/robin-kernel/discipline.md`; (b) when `current_stage ==
+  "paused_for_human"`, the user IS your interlocutor for the duration of the
+  pause — they choose `--ack` / `--abort` / `--replan` via `/robin-resume`.
+  This is a structured, milestone-gated interaction, not free-form
+  conversation. See `skills/robin-kernel/discipline.md` § "Pause resume
+  protocol".
 
 - **Do not make domain judgments.** "This API looks wrong", "This code should be
   refactored", "This decision is questionable" — none of these are thoughts a

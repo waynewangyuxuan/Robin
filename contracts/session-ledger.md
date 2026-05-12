@@ -234,6 +234,35 @@ correction. The previous entry is NOT modified.
 }
 ```
 
+### `pause_for_human`
+Kernel transitioned to `paused_for_human` state because a just-committed milestone has `human_checkpoint: true`. See `skills/robin-kernel/discipline.md` § "Pause artifact" and decision-kernel-pause-checkpoint-001.
+
+```json
+{
+  "entry_type": "pause_for_human",
+  "content": {
+    "milestone_id": "string — the milestone whose human_checkpoint triggered the pause",
+    "reason": "'checkpoint_flag' — the human_checkpoint flag on the milestone (current sole reason; other reasons may be added if more pause-point variants are introduced)",
+    "artifact_path": "string — path to .ai-robin/PAUSED-{milestone_id}.md",
+    "post_pause_routing": "string — what the kernel would have routed to next (e.g., 'scheduler:next_batch'); echoed from stage-state.pause.post_pause_routing"
+  }
+}
+```
+
+### `pause_resume`
+User invoked `/robin-resume` with one of the resume verbs while the run was in `paused_for_human` state. See `commands/robin-resume.md`.
+
+```json
+{
+  "entry_type": "pause_resume",
+  "content": {
+    "verb": "'ack' | 'abort' | 'replan'",
+    "milestone_id": "string — the milestone whose pause this resume resolved",
+    "user_note": "string | null — free-text passed after the verb on /robin-resume; for --replan this is also forwarded to Planner as the user's reasoning"
+  }
+}
+```
+
 ### `run_end`
 Final entry of a run.
 
@@ -241,7 +270,7 @@ Final entry of a run.
 {
   "entry_type": "run_end",
   "content": {
-    "exit_reason": "'all_complete' | 'intake_blocked' | 'global_budget_exhausted' | 'user_stopped'",
+    "exit_reason": "'all_complete' | 'intake_blocked' | 'intake_aborted' | 'setup_required' | 'pause_aborted' | 'global_budget_exhausted' | 'user_stopped'",
     "summary": {
       "total_entries": "integer",
       "stages_completed": ["string"],
@@ -254,6 +283,15 @@ Final entry of a run.
   }
 }
 ```
+
+The exit_reason enum:
+- `all_complete` — normal completion path.
+- `intake_blocked` — Intake gave up (input too incomplete; see `intake_blocked` signal).
+- `intake_aborted` — user cancelled at intake (see `intake_aborted` signal; Axis 1 / decision-intake-mode-taxonomy-001).
+- `setup_required` — Intake detected a missing precondition (e.g., no META) and the user chose to bootstrap before continuing (see `setup_required` signal; Axis 1 / decision-intake-meta-detection-001).
+- `pause_aborted` — user invoked `/robin-resume --abort` while paused at a milestone checkpoint (Axis 2 / decision-kernel-pause-checkpoint-001).
+- `global_budget_exhausted` — a top-level budget (tokens, wall-clock) ran out.
+- `user_stopped` — user sent an explicit STOP message mid-run.
 
 ---
 

@@ -234,6 +234,93 @@ continue.
 
 ---
 
+## Pause artifact (Axis 2 — milestone-level checkpoint)
+
+When the kernel transitions to `paused_for_human` (see SKILL.md routing
+table on `commit_complete` and decision-kernel-pause-checkpoint-001),
+write `.ai-robin/PAUSED-{milestone_id}.md` with this template:
+
+```markdown
+# Robin run paused — milestone {milestone_id}
+
+**Paused at:** {ISO timestamp}
+**Run id:** {run_id from stage-state}
+**Run mode:** {run_mode from stage-state}
+
+## What just completed
+
+- **Milestone:** {milestone_id} — {milestone.name}
+- **Risk:** {milestone.risk}
+- **Reviewer verdict:** {overall_status from review_merged}
+- **Commit:** {git_hash from commit_complete}
+- **Files committed:** {files_committed count}
+
+## Gate criteria status
+
+{gate_criteria text if present, plus pass/partial/N-A from review verdict}
+
+## What was planned next (before pause)
+
+- **Next milestone(s):** {first id in stage-state.plan_pointer.pending_milestones, plus its name from progress.yaml; for parallel batches list all milestones the next dispatch would cover}
+- **Next routing:** {post_pause_routing summary, e.g., "Scheduler would dispatch batch-4"}
+
+## Your options
+
+Run one of:
+
+- `/robin-resume --ack` — continue to next milestone as originally planned
+- `/robin-resume --abort` — stop the run; remaining milestones marked not_built; Finalizer writes a partial delivery bundle
+- `/robin-resume --replan` — re-spawn Planner with current state as context; useful if reviewing the just-built milestone changed your mind about what should come next
+
+If you want to inspect the work first, do so before choosing — Robin is fully stopped and will not write to disk until you invoke one of the verbs above.
+```
+
+The kernel populates each `{placeholder}` from stage-state, the
+triggering `review_merged` / `commit_complete` payloads, and the
+milestone's entry in progress.yaml. **No domain prose** — the kernel
+quotes structured fields verbatim. Anything that would require kernel
+to summarize free-form artifact content (e.g., "the auth flow now does
+X and Y") belongs in the Reviewer's verdict, which is already
+referenced via the verdict file path.
+
+After writing the file:
+
+1. Update `stage-state.current_stage = "paused_for_human"` and populate
+   the `pause` block (milestone_id, paused_at, artifact_path,
+   post_pause_routing).
+2. Append a ledger entry: `event_type: "pause_for_human"`, with fields
+   for milestone_id, reason (`checkpoint_flag`), and artifact_path.
+3. Surface the artifact path to the user in the next text turn (one
+   short sentence: "Paused after {milestone_id}. See {path} for
+   options.").
+4. **Exit the dispatch loop.** Do NOT spawn Scheduler / Planner / etc.
+   The kernel resumes only via `/robin-resume`.
+
+## Pause resume protocol
+
+When `/robin-resume` is invoked with `current_stage ==
+"paused_for_human"`, the kernel reads the verb from the command's
+arguments and routes per this table. Do NOT auto-resume the dispatch
+loop on any other condition.
+
+| Verb | Kernel action |
+|---|---|
+| `--ack` | Clear `stage-state.pause` block. Set `current_stage` per `pause.post_pause_routing` (typically `execute-control` if the next action is Scheduler). Append ledger entry `pause_resume` with `verb: "ack"`. Resume the dispatch loop — the next routing follows what would have run if no pause had occurred. |
+| `--abort` | Mark all remaining `pending_milestones` and `in_progress_milestones` as `not_built` in `plan_pointer`. Append `pause_resume` ledger entry with `verb: "abort"`. Then write `run_end` directly with `exit_reason: "pause_aborted"` and a brief summary (milestones_passed, milestones_degraded, milestones_not_built, total_commits). Set `current_stage = "done"`. Exit dispatch loop. **Do NOT spawn Finalization Agent** — abort is the user's explicit "stop here", and a full delivery bundle would be misleading. If the user later wants a partial bundle they can re-invoke `/robin-finalize` manually (not yet a command — future work; for now, the ledger + PAUSED files + run_end summary are sufficient). |
+| `--replan` | Append ledger entry `pause_resume` with `verb: "replan"`. Spawn Planning Agent with `trigger: "replan"`, `rework_reason: { kind: "human_checkpoint_replan", paused_milestone_id: pause.milestone_id }`. Planner reads current progress.yaml + the user's reasoning (if provided as command argument) and produces a revised plan. Clear `stage-state.pause`. Set `current_stage = "planning"`. |
+| (no verb / unknown verb) | Anomaly. Log to ledger. Surface a message to user listing the valid verbs. Do NOT auto-default. |
+
+After the verb dispatches its action, the PAUSED-{milestone_id}.md file
+stays on disk as a record — do not delete it. It's part of the run's
+audit trail and Finalizer reads it when composing the delivery bundle.
+
+If the user re-invokes `/robin-resume` without a verb while not paused
+(i.e., `current_stage != "paused_for_human"`), fall back to the
+standard interrupted-run resume logic from `contracts/stage-state.md` §
+"Resumability".
+
+---
+
 ## Anti-patterns to recognize in yourself
 
 The kernel has a tendency to drift into worker behavior. Watch for these:
