@@ -20,7 +20,7 @@ intent:
     | Mode | Trigger | Intake reads | Intake asks | Output |
     |---|---|---|---|---|
     | `new_project` | No META, no specific scope | Nothing | Full Q&A (current flow) | New rooms + intent + constraints + decisions |
-    | `incremental_feature` | Has META, user has feature description | Existing META, recent git log | Delta-only questions: which rooms affected, new constraints, gaps vs existing decisions | Delta intent + delta constraints (referencing existing rooms via `relations.extends_room`) |
+    | `incremental_feature` | Has META, user has feature description | Existing META, recent git log | Delta-only questions: which rooms affected, new constraints, gaps vs existing decisions | Delta intent + delta constraints (referencing existing specs via `relations.extends`) |
     | `bug_fix` | Has bug report or repro steps | Failing-test / error message / reproduction context | Repro confirmation, acceptance criteria (regression test), scope boundary | Narrow intent (`type: intent, scope: bug-fix`) + acceptance constraint with regression-test gate |
     | `pr_continuation` | Existing PR or branch | PR diff, PR description, reviewer comments, commit history | What's incomplete, what reviewers requested, what should be ignored | Continuation intent + constraint specs encoding reviewer asks |
 

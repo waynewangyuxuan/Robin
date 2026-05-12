@@ -5,6 +5,13 @@
 Load `skills/robin-intake/question-prioritization.md` for the full ranking
 methodology. This phase applies it to your gap + ambiguity lists.
 
+**Note on mode**: For `incremental_feature`, `bug_fix`, and
+`pr_continuation`, Phase 2 typically narrows the must-ask list to 0-3
+items. In those cases, prioritization is largely a no-op — ask in
+whatever order makes natural sense (usually narrowest scope first).
+The full ranking machinery below is most useful for `new_project`
+mode.
+
 ## Three ranking dimensions
 
 Rank questions by:

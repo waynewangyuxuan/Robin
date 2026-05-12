@@ -6,6 +6,14 @@ For every decision point classified as "proxy-able with a reasonable
 default" in Phase 2 (plus any gaps deferred here from Phases 4/5), make
 the decision yourself and record it as a spec.
 
+**Note on mode**: For `incremental_feature` / `bug_fix` /
+`pr_continuation`, most "proxy-able" universe is already encoded in
+the pre-existing active specs you loaded in Phase 1 (frozen context).
+Proxy here only covers the small delta-specific gaps that Phase 4
+didn't ask. Often zero proxy decisions in these modes. For
+`new_project`, expect the typical proxy load (auth flow, database,
+deployment target, etc.).
+
 ## The spec
 
 Write a `decision-*.yaml` spec with:

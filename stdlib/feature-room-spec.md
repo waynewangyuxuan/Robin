@@ -163,7 +163,7 @@ provenance:
 # Relationships to other specs. Multiple relations allowed.
 relations:
   - type: {depends_on|conflicts_with|supersedes|superseded_by|relates_to|
-           derived_from}
+           derived_from|extends}
     ref: "{spec_id of related spec}"
     note: "{optional clarification}"
 
@@ -194,6 +194,37 @@ When this happens:
   user hints in the input suggested this direction
 - All `agent_proxy` specs are listed in the `intake_complete` signal's
   `agent_proxy_decisions` field, so human verifier can quickly audit them
+
+---
+
+## `extends` relation type (AI-Robin specific, Axis 1)
+
+Used by Intake's incremental modes (`incremental_feature` /
+`bug_fix` / `pr_continuation`) when a new spec adds to or specializes
+a pre-existing active spec rather than superseding it. See
+decision-intake-mode-taxonomy-001.
+
+Semantics:
+- The new spec **builds on top of** the referenced spec — the
+  referenced spec remains authoritative for everything it covers; the
+  new spec adds delta only.
+- Unlike `supersedes`, the referenced spec stays `state: active` and
+  is still consulted by downstream agents.
+- Unlike `derived_from`, the relationship is normative not historical:
+  Planner and Executor both honor the extended spec's constraints
+  when implementing the extending one.
+
+Concrete example: an existing `intent-api-003` defines a CRUD endpoint
+suite for `/users`. A new `intent-api-007` adds a `/users/:id/avatar`
+upload endpoint. The new spec carries
+`relations: [{type: extends, ref: intent-api-003, note: "adds avatar upload"}]`.
+Planner emitting a contract for the new endpoint reuses (via
+`relations.extends`) the existing user-resource contract.
+
+Mandatory in incremental modes: every spec Intake emits in
+`incremental_feature` / `pr_continuation` MUST have at least one
+`relations.extends` or `relations.relates_to` entry pointing at a
+pre-existing active spec. Phase 9 self-check enforces this.
 
 ---
 

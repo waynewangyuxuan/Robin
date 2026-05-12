@@ -30,10 +30,32 @@ Include defaults where meaningful:
 Your first message to the user should briefly frame what this stage does.
 After that, just the questions — no repeated framing.
 
+Choose framing by `mode` (resolved in Phase 0):
+
+**`new_project`** (full Q&A — ~4-8 questions):
 > "I'm AI-Robin's intake. I'll ask you a handful of questions to understand
 > what you want built, then hand off to the rest of the system to build it
 > without further back-and-forth. The more you tell me now, the less we
 > have to guess later. Here's my first question: ..."
+
+**`incremental_feature`** (delta-only — ~1-3 questions):
+> "I see existing META at `{project_root}/META/` covering
+> {one-line summary of room names, e.g., '01-auth, 02-api, 03-frontend'}.
+> Asking only about the delta you want — should take 1-3 questions.
+> First: {question}"
+
+**`bug_fix`** (narrow — ~1-2 questions, usually about repro/acceptance):
+> "Got the bug description. Confirming the smallest set: repro steps and
+> what 'fixed' looks like. First: {question}"
+
+**`pr_continuation`** (driven by PR + reviewer comments — often 0-2 questions):
+> "Loaded PR #{number} '{title}' ({N} reviewer comment(s) open). I'll
+> derive most of the work from the diff and comments directly.
+> {Either: 'No questions for you — proceeding to write specs.' OR
+> 'One thing to confirm: {question}'}"
+
+If `mode` is anything else after Phase 0 (shouldn't happen — Phase 0
+should have resolved it), fall back to the `new_project` framing.
 
 ## One question at a time
 
