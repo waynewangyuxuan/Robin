@@ -1,6 +1,6 @@
 spec_id: decision-intake-meta-detection-001
 type: decision
-state: draft
+state: active
 
 intent:
   summary: "When Intake runs in incremental_feature / bug_fix / pr_continuation mode, it requires a healthy META/ to anchor against. If absent, Intake prompts the user to bootstrap via /fr-init — it never auto-invokes another plugin's skill."

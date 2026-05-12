@@ -1,5 +1,5 @@
 progress:
-  completion: 0.4   # MVP delivered; velocity-pivot work in flight
+  completion: 0.55  # MVP + velocity-pivot spec/skill layer landed; runtime validation pending on 4 milestones (see "in_progress" entries below)
   milestones:
     - id: mvp-runnable
       name: "Core dispatch loop runnable end-to-end"
@@ -13,67 +13,97 @@ progress:
     # Axis 1 — incremental entry (broadened #7). See decision-intake-mode-taxonomy-001.
     - id: axis1-mode-signal
       name: "Extend intake_complete signal with mode field + add setup_required / intake_aborted exit signals"
-      status: pending
+      status: completed
+      completed_at: "2026-05-10"
       gate: false
       depends_on: []
       rooms_affected: ["01-intake", "12-kernel"]
       contract_spec_ids: []   # to be filled when contracts/dispatch-signal.md gets a contract spec
       gate_criteria: "contracts/dispatch-signal.md documents mode + new exit signals; existing tests / examples updated."
+      evidence:
+        - "commit e45e009 — contracts/dispatch-signal.md: intake_complete + mode + rooms_referenced + pr_ref; setup_required + intake_aborted terminal signals"
+        - "commit e56abd0 — added pr_ref propagation through to intake_complete payload"
 
     - id: axis1-meta-detection
       name: "Intake META-detection prompt (option C — prompt user, never auto-invoke feature-room)"
-      status: pending
+      status: in_progress
       gate: false
       depends_on: ["axis1-mode-signal"]
       rooms_affected: ["01-intake"]
       contract_spec_ids: []
       gate_criteria: "skills/robin-intake/SKILL.md branches on META existence; manual repro: /robin-start --mode incremental_feature in repo without META yields the documented prompt with options 1/2/cancel."
+      evidence:
+        - "commit e56abd0 — skills/robin-intake/phases/phase-0-preflight.md (new); SKILL.md input gains mode + pr_ref; phase-10 documents 4 exit signals"
+      validation_pending:
+        - "Manual repro of the META-missing prompt with all three options (run /fr-init, switch to new_project, cancel) on a clean repo"
 
     - id: axis1-mode-phases
       name: "Mode-specific intake phase scripts (new_project / incremental_feature / bug_fix / pr_continuation)"
-      status: pending
+      status: completed
+      completed_at: "2026-05-12"
       gate: true
       depends_on: ["axis1-mode-signal", "axis1-meta-detection"]
       rooms_affected: ["01-intake"]
       contract_spec_ids: []
       gate_criteria: "Each mode has a phase folder with documented Q&A and emits planning-ready specs; incremental_feature uses relations.extends to reference existing specs; bug_fix emits regression-test gate."
+      evidence:
+        - "commit e56abd0 — phases 1/2/7/8/9/10 each gained mode-specific sections; phase-0-preflight added"
+        - "stdlib/feature-room-spec.md — added pr_extraction source_type for pr_continuation mode"
 
     - id: axis1-planner-incremental
       name: "Planner Phase 1 (situate) branches on mode and reads existing META as frozen context"
-      status: pending
+      status: in_progress
       gate: true
       depends_on: ["axis1-mode-phases"]
       rooms_affected: ["02-planner"]
       contract_spec_ids: []
       gate_criteria: "Planner emits incremental plan against existing room sequence numbering; existing active contracts are referenced not duplicated; smoke test on AI-Robin's own META passes."
+      evidence:
+        - "commit e56abd0 — skills/robin-planner/phases/phase-1-situate.md mode sub-branching; SKILL.md Input documents mode propagation and the new replan kind"
+      validation_pending:
+        - "End-to-end smoke test of /robin-start --mode incremental_feature on this very repo, asserting milestone numbering continues correctly and existing contracts are referenced not duplicated"
 
     # Axis 2 — pause-and-review (#10's first concretization). See decision-kernel-pause-checkpoint-001.
     - id: axis2-checkpoint-flag
       name: "Add human_checkpoint flag to milestone schema + run-mode taxonomy in /robin-start"
-      status: pending
+      status: completed
+      completed_at: "2026-05-10"
       gate: false
       depends_on: []
       rooms_affected: ["02-planner", "12-kernel"]
       contract_spec_ids: []
       gate_criteria: "phase-5-milestones.md documents the flag; /robin-start --run-mode {autonomous,hybrid,dev} sets defaults correctly; explicit per-milestone overrides honored."
+      evidence:
+        - "commit e45e009 — phase-5-milestones.md gained Risk classification + Human checkpoint flag sections; risk + human_checkpoint fields; run-mode default table (hybrid → risk:high)"
+        - "commit e45e009 — commands/robin-start.md gained --mode / --run-mode / --pr flag parsing"
 
     - id: axis2-paused-state
       name: "Kernel paused_for_human state + PAUSED-{milestone}.md artifact"
-      status: pending
+      status: in_progress
       gate: true
       depends_on: ["axis2-checkpoint-flag"]
       rooms_affected: ["12-kernel"]
       contract_spec_ids: []
       gate_criteria: "Manual repro: a milestone marked human_checkpoint:true causes kernel to write PAUSED-*.md and exit cleanly; stage-state reflects paused_for_human."
+      evidence:
+        - "commit 15b37b1 — contracts/stage-state.md gained paused_for_human state + pause block; SKILL.md commit_complete routing implements pause-check; discipline.md Pause artifact + Pause resume protocol sections"
+        - "commit 15b37b1 — contracts/session-ledger.md gained pause_for_human + pause_resume entry types; run_end exit_reason extended with setup_required / intake_aborted / pause_aborted"
+      validation_pending:
+        - "End-to-end run with a human_checkpoint:true milestone, asserting PAUSED-{milestone_id}.md is written, kernel exits, stage-state.current_stage == 'paused_for_human', and PAUSED file content matches template"
 
     - id: axis2-resume-verbs
       name: "Extend /robin-resume with --ack / --abort / --replan"
-      status: pending
+      status: in_progress
       gate: true
       depends_on: ["axis2-paused-state"]
       rooms_affected: ["12-kernel"]
       contract_spec_ids: []
       gate_criteria: "All three verbs work on a real paused run; --replan invokes Planner with rework_reason.kind: human_checkpoint_replan."
+      evidence:
+        - "commit 15b37b1 — commands/robin-resume.md handles all 3 verbs; discipline.md Pause resume protocol table"
+        - "commit e56abd0 — skills/robin-planner/phases/phase-1-situate.md handles trigger:replan with rework_reason.kind: human_checkpoint_replan"
+      validation_pending:
+        - "Three separate runs paused at a milestone, each resolving via --ack, --abort, --replan respectively; verify --abort writes run_end with exit_reason: pause_aborted and skips Finalizer; verify --replan re-spawns Planner with paused_milestone_id"
 
     # Other roadmap items kept as a single placeholder; they will get
     # their own milestones when they get prioritized (see context-roadmap-001).

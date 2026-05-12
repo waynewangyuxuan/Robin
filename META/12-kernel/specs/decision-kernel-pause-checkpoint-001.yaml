@@ -1,6 +1,6 @@
 spec_id: decision-kernel-pause-checkpoint-001
 type: decision
-state: draft
+state: active
 
 intent:
   summary: "Concretizes #10's pause-point protocol for milestone-level human checkpoints. Adds a paused_for_human kernel state, a run-mode taxonomy (autonomous / hybrid / dev) where hybrid pauses on risk:high milestones only, a per-milestone human_checkpoint flag, a per-milestone risk classification, and three resume verbs (--ack / --abort / --replan)."
