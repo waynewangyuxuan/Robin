@@ -1,0 +1,112 @@
+spec_id: decision-intake-mode-taxonomy-001
+type: decision
+state: draft
+
+intent:
+  summary: "Intake supports four modes — new_project, incremental_feature, bug_fix, pr_continuation — selected at /robin-start time. Each mode has a distinct Q&A flow and produces a different shape of intake_complete signal."
+  detail: |
+    **Decision**: `intake_complete` signal gains a `mode` field with
+    values from this closed enum:
+
+    ```
+    new_project | incremental_feature | bug_fix | pr_continuation
+    ```
+
+    Each mode has its own phase set under `skills/robin-intake/phases/`
+    and its own intent-spec template emitted to META.
+
+    **Per-mode Q&A shape**:
+
+    | Mode | Trigger | Intake reads | Intake asks | Output |
+    |---|---|---|---|---|
+    | `new_project` | No META, no specific scope | Nothing | Full Q&A (current flow) | New rooms + intent + constraints + decisions |
+    | `incremental_feature` | Has META, user has feature description | Existing META, recent git log | Delta-only questions: which rooms affected, new constraints, gaps vs existing decisions | Delta intent + delta constraints (referencing existing rooms via `relations.extends_room`) |
+    | `bug_fix` | Has bug report or repro steps | Failing-test / error message / reproduction context | Repro confirmation, acceptance criteria (regression test), scope boundary | Narrow intent (`type: intent, scope: bug-fix`) + acceptance constraint with regression-test gate |
+    | `pr_continuation` | Existing PR or branch | PR diff, PR description, reviewer comments, commit history | What's incomplete, what reviewers requested, what should be ignored | Continuation intent + constraint specs encoding reviewer asks |
+
+    **Mode selection**:
+
+    - `/robin-start --mode <mode>` — explicit; required for `bug_fix`
+      and `pr_continuation`.
+    - `/robin-start` (no flag) — Intake auto-detects between
+      `new_project` and `incremental_feature` ONLY: presence of
+      `META/` → `incremental_feature`; otherwise `new_project`. Intake
+      then proposes the detected mode in its first user message and
+      lets the user confirm or override (including switching to
+      `bug_fix` or `pr_continuation`).
+    - `bug_fix` and `pr_continuation` are never auto-selected because
+      both need extra context — bug repro / PR URL — that can't be
+      inferred from filesystem state. They MUST be passed via `--mode`.
+
+    **Numbering convention for emitted specs**:
+
+    - `new_project` — fresh numbering (`intent-feature-001`, etc.)
+    - `incremental_feature` — Intake reads existing rooms and continues
+      the room's spec sequence (`intent-feature-007` if 6 already exist
+      in that room)
+    - `bug_fix` — fresh `intent-bug-{shortname}-001` plus an `acceptance`
+      constraint spec
+    - `pr_continuation` — references the originating PR in
+      `provenance.source_ref` (`pr_url` field added to provenance shape)
+
+    **Hard rules across modes**:
+
+    - All modes still produce planning-ready specs (Planner's input
+      contract is unchanged from Intake's perspective).
+    - `incremental_feature` and `pr_continuation` MUST reference at
+      least one existing spec via `relations.extends`, otherwise they
+      should have been classified as `new_project`.
+    - `bug_fix` MUST emit a regression-test gate (verifiable by Reviewer).
+
+    **What this changes downstream**:
+
+    - **Planner** Phase 1 (`phase-1-situate.md`) branches on `mode`:
+      `new_project` runs current flow; the others load existing META as
+      frozen context and plan only the delta. Concretized in
+      decision-planner-incremental-phase1-001 (TBD).
+    - **Kernel**: `/robin-start` flag handling. State machine unchanged
+      except for the initial branch.
+    - **Other agents** (Scheduler, Executor, Reviewer): unchanged.
+      They receive the same plan shape regardless of mode.
+
+    **Rationale**: Robin's coverage of real day-to-day work is bounded
+    by the `new_project` assumption. Lifting that assumption is the
+    highest-leverage change in the velocity-pivot direction (see
+    decision-daily-velocity-pivot-001). Four modes is the minimal set
+    that covers the actual mix of senior-dev work — adding a fifth
+    (refactor, dependency upgrade, docs-only) would be premature; if
+    those become a frequent miss, add them.
+
+    **Out of scope (this decision)**:
+
+    - The actual Q&A scripts per mode (lives in skills/robin-intake/phases/).
+    - Auto-detection heuristics (a separate decision once we have data).
+    - Whether Robin should auto-create META when missing — answered by
+      decision-intake-meta-detection-001.
+
+constraints: []
+
+indexing:
+  type: decision
+  priority: P0
+  layer: feature
+  domain: "agent-intake"
+  tags: ["mode", "incremental", "intake-shape", "axis-1"]
+
+provenance:
+  source_type: chat_extraction
+  confidence: 0.9
+  source_ref: "Velocity-pivot conversation 2026-05-10; Axis 1 selection"
+  produced_by_agent: "wayne"
+  produced_at: "2026-05-10T00:00:00Z"
+
+relations:
+  - type: relates_to
+    ref: decision-daily-velocity-pivot-001
+  - type: relates_to
+    ref: intent-intake-001
+
+anchors:
+  - file: "skills/robin-intake/SKILL.md"
+  - file: "contracts/dispatch-signal.md"
+  - file: "commands/robin-start.md"

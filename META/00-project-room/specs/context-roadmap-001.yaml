@@ -3,23 +3,32 @@ type: context
 state: active
 
 intent:
-  summary: "Current post-MVP roadmap for AI-Robin. Canonical tracking is on GitHub issues; this spec is a snapshot + suggested sequencing."
+  summary: "Current post-MVP roadmap for AI-Robin. Canonical tracking is on GitHub issues; this spec is a snapshot + suggested sequencing. As of 2026-05-10 sequencing reprioritized around the daily-velocity pivot — see decision-daily-velocity-pivot-001."
   detail: |
-    **Snapshot as of 2026-04-23.** Canonical source: GitHub issues
+    **Snapshot as of 2026-05-10** (velocity-pivot prioritization).
+    Canonical source: GitHub issues
     <https://github.com/waynewangyuxuan/Robin/issues>.
 
     | # | Scope | Notes |
     |---|---|---|
     | #3 | Auto-worktree per Robin run | Foundational; unlocks #8, #10 |
     | ~~#4~~ | ~~Mid-run HITL checkpoint~~ | **Merged into #10** on 2026-04-22; see decision-pause-point-unification-001 |
-    | #5 | Skill internalization + profile model (was: "domain capability pack") | **Reframed 2026-04-23** — see decision-skill-internalization-001 + decision-profile-as-config-bundle-001. Recommend splitting into #5a (internalizer agent + Intake skill assignment) and #5b (profile model + storage + dashboard contract). |
+    | #5 | Skill internalization + profile model (was: "domain capability pack") | **Reframed 2026-04-23** — see decision-skill-internalization-001 + decision-profile-as-config-bundle-001. Split into #5a (internalizer agent + Intake skill assignment) and #5b (profile model + storage + dashboard contract). |
     | #6 | Post-run Q&A / acceptance agent | Complements #10 (different timing: post-run vs in-flight) |
-    | #7 | Intake code-extraction source | Enables existing-project use via same Feature Room |
+    | #7 | Intake code-extraction source — **broadened 2026-05-10** to "Axis 1: incremental entry" with 4 modes (`new_project` / `incremental_feature` / `bug_fix` / `pr_continuation`) | See decision-intake-mode-taxonomy-001 + decision-intake-meta-detection-001. The original "extract Intake spec from code" is now the `incremental_feature` mode's first phase. |
     | #8 | Auto-approve mode (worktree + allowlist + tool lockdown) | Depends on #3 |
     | #9 | Robin stdlib (bin/) + structured ledger schema | Low-cost; unblocks #10 |
-    | #10 | Intervention protocol + dashboard (absorbs #4) | Depends on #3 + #9 + **#5b** (profile is the dashboard's first-class object); see decision-protocol-before-ui-001 + decision-pause-point-unification-001 + decision-profile-as-config-bundle-001 |
+    | #10 | Intervention protocol + dashboard (absorbs #4) — **first concretization 2026-05-10**: "Axis 2: milestone-level pause-and-review" | See decision-kernel-pause-checkpoint-001. The full pause-point registry + dashboard remain future work; Axis 2 implements one pause point (post-Committer) to validate the shape. |
 
-    **Suggested sequence** (debatable):
+    **Velocity-pivot sequencing (2026-05-10 — current)**:
+    `Axis 1 (#7 broadened) → Axis 2 (#10 concretized) → #3 → #9 → #8 → #6 → #5a → #5b`.
+
+    Rationale: Axis 1 + 2 directly raise Robin's coverage of Wayne's
+    daily work (today ~5%, target ~30-50%); the rest of the roadmap
+    is conditional on Robin actually being used day-to-day. See
+    decision-daily-velocity-pivot-001 for the full reasoning.
+
+    **Prior sequencing (2026-04-23, superseded)**:
     `#3 → #9 → #8 → #7 → #6 → #5a → #5b → #10`.
 
     **New axis surfaced 2026-04-22 (not yet a GitHub issue)**:
@@ -54,10 +63,16 @@ indexing:
 provenance:
   source_type: chat_extraction
   confidence: 1.0
-  source_ref: "Roadmap discussion 2026-04-20, issues #3-#10; updated 2026-04-22 after #4→#10 merge; updated 2026-04-23 after #5 reframe to skill-internalization + profile model"
+  source_ref: "Roadmap discussion 2026-04-20, issues #3-#10; updated 2026-04-22 after #4→#10 merge; updated 2026-04-23 after #5 reframe to skill-internalization + profile model; updated 2026-05-10 after velocity-pivot — see decision-daily-velocity-pivot-001"
   produced_by_agent: "wayne"
-  produced_at: "2026-04-23T00:00:00Z"
+  produced_at: "2026-05-10T00:00:00Z"
 
-relations: []
+relations:
+  - type: relates_to
+    ref: decision-daily-velocity-pivot-001
+  - type: relates_to
+    ref: decision-intake-mode-taxonomy-001
+  - type: relates_to
+    ref: decision-kernel-pause-checkpoint-001
 
 anchors: []

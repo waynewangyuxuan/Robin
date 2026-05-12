@@ -1,0 +1,92 @@
+spec_id: decision-daily-velocity-pivot-001
+type: decision
+state: active
+
+intent:
+  summary: "Robin's success metric is Wayne's personal daily-dev velocity, not market adoption or product-grade UX. Two axes prioritized for the next iteration: incremental entry, and milestone-level pause-and-review."
+  detail: |
+    **Decision**: Robin is explicitly **not a product**. It is a personal
+    development backend whose success is measured by how often Wayne
+    actually reaches for it during normal day-to-day engineering work.
+
+    Today the answer is "rarely" — Robin's intake hard-codes a 0→1 new
+    project flow, which covers maybe 5% of real-world tasks for a senior
+    dev who is mostly doing 1→2, bug fixes, PR continuations, and
+    cross-repo work. The kernel architecture (parallel dispatch, dynamic
+    review composition, binding contracts, degradation as first-class
+    state) is genuinely strong for long autonomous runs and remains the
+    differentiator vs Superpowers / Devin / OpenHands. The problem is
+    *entry mode*, not the executor.
+
+    **Two axes prioritized for the next iteration**:
+
+    1. **Incremental entry (Axis 1)** — Intake must support multiple
+       modes (`new_project` / `incremental_feature` / `bug_fix` /
+       `pr_continuation`) so Robin can be invoked on existing repos
+       with existing META, on a GitHub issue, or on an in-flight PR.
+       This subsumes and broadens issue #7. Concretized in
+       decision-intake-mode-taxonomy-001 and
+       decision-intake-meta-detection-001.
+
+    2. **Milestone-level pause-and-review (Axis 2)** — Kernel must
+       support a `paused_for_human` state and run-mode taxonomy
+       (`autonomous` / `hybrid` / `dev`) so the user can dial trust
+       per task. This is the concretization of issue #10's still-open
+       checkpoint design. Concretized in
+       decision-kernel-pause-checkpoint-001.
+
+    **Explicitly de-prioritized (for now)**:
+
+    - Marketing / distribution / external adoption work.
+    - Bigger plan-granularity changes (going step-by-step like
+      Superpowers writing-plans). The trade-off is intentional: Robin
+      bets on per-batch review as the quality gate, not per-step ritual.
+
+    **What is NOT changing**:
+
+    - Feature Room remains the spec layer; Robin remains the execution
+      layer. They stay decoupled (see decision-kernel-agnostic-001).
+      Cross-plugin coupling for META setup follows option C — Robin
+      detects + prompts, never auto-invokes (decision-intake-meta-detection-001).
+    - Kernel domain-agnosticism (decision-kernel-agnostic-001).
+    - The pause-point unification of #4 and #10 (decision-pause-point-unification-001).
+      Axis 2 is the concrete first instantiation of that protocol.
+
+    **Rationale**: Honest assessment of the autonomous-SWE space (Devin,
+    Cognition's $4B valuation, OpenHands, Cline's background mode,
+    Cursor Background Agent, Codex Cloud) shows the "complete autonomous
+    SWE" niche is saturated for products. But the "long-running
+    constraint-bound execution layer hooked into my actual workflow"
+    niche is *not* saturated — because it's a personal-tooling shape,
+    not a product shape. Robin's value to Wayne is highest if it leans
+    into that.
+
+    **Tracked by**: GitHub issues #7 (now broadened) and #10 (now with
+    concrete checkpoint design). Roadmap update in
+    context-roadmap-001.
+
+constraints: []
+
+indexing:
+  type: decision
+  priority: P0
+  layer: project
+  domain: "meta"
+  tags: ["strategy", "scope", "pivot", "personal-tooling"]
+
+provenance:
+  source_type: chat_extraction
+  confidence: 1.0
+  source_ref: "Strategic reflection conversation 2026-05-10 — user explicit pivot away from product framing toward personal-velocity framing; Axis 1 + Axis 2 selected from a 4-axis menu (incremental entry / pause-and-review / anti-deviation primitives / live observability)"
+  produced_by_agent: "wayne"
+  produced_at: "2026-05-10T00:00:00Z"
+
+relations:
+  - type: relates_to
+    ref: decision-kernel-agnostic-001
+  - type: relates_to
+    ref: decision-pause-point-unification-001
+  - type: relates_to
+    ref: context-roadmap-001
+
+anchors: []

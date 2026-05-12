@@ -19,8 +19,12 @@ domain expert. Canonical design detail lives in [DESIGN.md](../../DESIGN.md).
 
 ## Load-bearing design decisions
 
-Three decisions shape most other trade-offs in this repo:
+Decisions that shape most other trade-offs in this repo:
 
+- [`decision-daily-velocity-pivot-001`](specs/decision-daily-velocity-pivot-001.yaml) —
+  Robin's success metric is Wayne's daily-dev velocity, not market
+  adoption. Two axes prioritized: **incremental entry** (Axis 1 — broadens #7)
+  and **milestone-level pause-and-review** (Axis 2 — concretizes #10).
 - [`decision-kernel-agnostic-001`](specs/decision-kernel-agnostic-001.yaml) —
   kernel embeds no frontend / backend / devops / business knowledge;
   domain capability lives exclusively in packs.
@@ -33,6 +37,21 @@ Three decisions shape most other trade-offs in this repo:
 - [`decision-pause-point-unification-001`](specs/decision-pause-point-unification-001.yaml) —
   mid-run intervention (#10) and human acceptance (#4) are one
   mechanism: milestone acceptance is a specialization of a pause point.
+
+### Velocity-pivot work specs
+
+Concrete designs for Axis 1 and Axis 2 (live under per-agent rooms,
+listed here for visibility):
+
+- [`01-intake/decision-intake-mode-taxonomy-001`](../01-intake/specs/decision-intake-mode-taxonomy-001.yaml) —
+  four intake modes (`new_project` / `incremental_feature` / `bug_fix` /
+  `pr_continuation`).
+- [`01-intake/decision-intake-meta-detection-001`](../01-intake/specs/decision-intake-meta-detection-001.yaml) —
+  option C: detect missing META and prompt; never auto-invoke
+  feature-room from kernel.
+- [`12-kernel/decision-kernel-pause-checkpoint-001`](../12-kernel/specs/decision-kernel-pause-checkpoint-001.yaml) —
+  `paused_for_human` state, run-mode taxonomy, `human_checkpoint` flag,
+  and the `/robin-resume --ack/--abort/--replan` verbs.
 
 ## Conventions
 

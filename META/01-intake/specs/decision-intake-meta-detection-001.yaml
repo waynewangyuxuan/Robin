@@ -1,0 +1,111 @@
+spec_id: decision-intake-meta-detection-001
+type: decision
+state: draft
+
+intent:
+  summary: "When Intake runs in incremental_feature / bug_fix / pr_continuation mode, it requires a healthy META/ to anchor against. If absent, Intake prompts the user to bootstrap via /fr-init — it never auto-invokes another plugin's skill."
+  detail: |
+    **Decision (Option C)**: Robin and Feature Room are separate plugins
+    with separate concerns. Robin will neither assume META exists silently
+    nor auto-bootstrap it on the user's behalf. Instead:
+
+    1. At intake-start, if `mode != new_project`, Intake checks for
+       `META/` at the project root.
+    2. If `META/` is missing or has no `00-project-room`, Intake halts
+       and emits a prompt to the user offering to invoke `/fr-init`
+       from the sibling Feature Room plugin.
+    3. If the user agrees, control passes back to the harness; the user
+       runs `/fr-init`, then re-runs `/robin-start` (or invokes
+       `/robin-resume` once that supports `--restart-intake`).
+    4. If the user declines, Intake exits cleanly with a `setup_required`
+       signal — kernel does not start the dispatch loop.
+
+    **Why not auto-invoke (Option B)**: Robin kernel auto-invoking
+    feature-room skills would create a hard cross-plugin dependency.
+    Feature Room can be developed and broken independently; coupling
+    them at runtime makes Robin's failure surface include Feature Room's
+    bugs.
+
+    **Why not silently fail (Option A)**: A "your repo doesn't have
+    META, run /fr-init first" error is correct but rude — it makes
+    the user context-switch into another plugin's docs to figure out
+    the next move. Prompting with a one-line offer keeps the
+    information local.
+
+    **Concretely, the prompt**:
+
+    ```
+    This repo has no META/ folder. incremental_feature mode needs an
+    existing Feature Room to anchor against. Two options:
+
+    1. Run /fr-init to bootstrap META, then re-run /robin-start
+    2. Switch to new_project mode (start fresh; this will create META)
+
+    Which? [1/2/cancel]
+    ```
+
+    User picks 1 → Intake exits with `setup_required`, instructions
+    in the message.
+    User picks 2 → Intake continues in `new_project` mode.
+    User picks cancel → Intake exits with `intake_aborted`.
+
+    **What this implies**:
+
+    - `dispatch-signal.md` gains two new exit signals: `setup_required`
+      and `intake_aborted`. Both are terminal; kernel cleans up and
+      stops.
+    - `commands/robin-start.md` documents the META-detection behavior
+      so users aren't surprised.
+    - **Kernel still does not import or call feature-room internals**.
+      The prompt is pure text in Intake's user-facing message; the
+      "invocation" is the user typing the next slash command.
+
+    **Edge cases**:
+
+    - META exists but is *broken* (referenced room missing, dangling
+      anchor): Intake delegates the validation to a quick `/fr-check`
+      style sanity scan **of its own** (intake-internal, not a
+      cross-plugin call). On hard breakage, same prompt path with a
+      different opening line.
+    - User runs `/robin-start --mode incremental_feature` against a
+      fresh repo: same prompt, but option 2 is automatically converted
+      to "did you mean `--mode new_project`?" with a confirmation.
+
+    **Rationale**: Cross-plugin coupling is cheap to add and expensive
+    to remove. Keeping Robin ↔ Feature Room as text-protocol-coupled
+    (same human reads both prompts) preserves the option to evolve
+    them independently. The ergonomic cost (one extra slash command)
+    is small; the architectural cost of tight runtime coupling would
+    be large.
+
+    **Tracked by**: This decision spec; first surfacing in the
+    velocity-pivot conversation 2026-05-10.
+
+constraints: []
+
+indexing:
+  type: decision
+  priority: P1
+  layer: feature
+  domain: "agent-intake"
+  tags: ["cross-plugin", "ergonomics", "axis-1", "boundary"]
+
+provenance:
+  source_type: chat_extraction
+  confidence: 1.0
+  source_ref: "Velocity-pivot conversation 2026-05-10 — user explicit choice of option C over A (silent error) and B (auto-invoke)"
+  produced_by_agent: "wayne"
+  produced_at: "2026-05-10T00:00:00Z"
+
+relations:
+  - type: relates_to
+    ref: decision-intake-mode-taxonomy-001
+  - type: relates_to
+    ref: decision-kernel-agnostic-001
+  - type: relates_to
+    ref: decision-daily-velocity-pivot-001
+
+anchors:
+  - file: "skills/robin-intake/SKILL.md"
+  - file: "contracts/dispatch-signal.md"
+  - file: "commands/robin-start.md"

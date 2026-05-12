@@ -58,8 +58,10 @@ Intake Agent successfully produced a planning-ready spec.
 Payload:
 ```json
 {
-  "project_root": "string — path where Feature Room was initialized",
-  "rooms_created": ["string — list of room ids created or updated"],
+  "mode": "'new_project' | 'incremental_feature' | 'bug_fix' | 'pr_continuation' — which intake flow ran; selected at /robin-start time or auto-detected, see decision-intake-mode-taxonomy-001",
+  "project_root": "string — path where Feature Room lives (created in new_project mode, pre-existing in other modes)",
+  "rooms_created": ["string — list of room ids created (new_project) OR updated (other modes)"],
+  "rooms_referenced": ["string — OPTIONAL; for non-new_project modes, list of pre-existing room ids the new specs reference via relations.extends"],
   "specs_count": {
     "intent": "integer",
     "constraint": "integer",
@@ -79,7 +81,13 @@ Payload:
 }
 ```
 
-Main agent action: update stage-state to `planning`, spawn Planning Agent.
+`mode` controls which Intake phase set ran and shapes the emitted specs:
+- `new_project` — full Q&A; fresh room numbering; `rooms_referenced` is empty.
+- `incremental_feature` — delta-only Q&A against existing META; emitted specs use `relations.extends` to reference existing room contracts/decisions; `rooms_referenced` lists them.
+- `bug_fix` — narrow intent + regression-test acceptance constraint; `rooms_referenced` contains the room(s) housing the buggy code.
+- `pr_continuation` — derives intent/constraints from an existing PR's diff and reviewer comments; provenance includes `pr_url`.
+
+Main agent action: update stage-state to `planning`, spawn Planning Agent (with `mode` propagated so Planner Phase 1 can branch).
 
 #### `intake_blocked`
 Intake Agent cannot complete intake. This is the only pre-degradation signal
@@ -97,6 +105,43 @@ Payload:
 
 Main agent action: this is the one case where AI-Robin exits without doing work.
 Surface the partial spec + reason to user. Do not spawn anything further.
+
+#### `setup_required`
+Intake detected that a precondition for the selected mode is missing — most
+commonly, `mode != new_project` was requested but the project has no `META/`
+folder. Intake offered the user a setup prompt (see
+decision-intake-meta-detection-001) and the user chose to bootstrap before
+continuing.
+
+Payload:
+```json
+{
+  "missing_precondition": "'no_meta_folder' | 'no_project_room' | 'meta_broken'",
+  "requested_mode": "'new_project' | 'incremental_feature' | 'bug_fix' | 'pr_continuation'",
+  "user_next_action": "string — exactly what the user should do next, e.g. 'Run /fr-init then re-run /robin-start --mode incremental_feature'",
+  "details": "string — what was missing or broken"
+}
+```
+
+Main agent action: terminal — surface `user_next_action` verbatim to the user
+and exit cleanly. Do not spawn anything. Robin does NOT auto-invoke the sibling
+plugin's skill (see decision-intake-meta-detection-001 option C).
+
+#### `intake_aborted`
+User cancelled at the setup-prompt stage (or explicitly aborted intake some
+other way). Distinct from `intake_blocked`: `intake_blocked` means Intake
+itself gave up; `intake_aborted` means the user said stop.
+
+Payload:
+```json
+{
+  "stage_when_aborted": "'setup_prompt' | 'mode_questions' | 'spec_review'",
+  "reason": "string — what the user said, verbatim if available"
+}
+```
+
+Main agent action: terminal — log the abort and exit. No partial artifacts to
+preserve beyond what Intake already wrote to disk.
 
 ---
 
@@ -402,11 +447,36 @@ Then route per the trigger:
 - If `trigger_signal_type == 'review_merged'`: continue the `review_merged`
   routing (next stage per the original verdict — Scheduler on pass,
   Planning on fail-with-budget, Degradation Agent on fail-without-budget).
+  **Before transitioning to Scheduler on a pass-path**, kernel performs the
+  pause-check (see below).
 - If `trigger_signal_type == 'degradation_spec_written'`: continue the dispatch
-  loop (typically back to Scheduler to attempt next batch).
+  loop (typically back to Scheduler to attempt next batch). Pause-check applies
+  here too — a degraded milestone with `human_checkpoint: true` still pauses.
 - If `success == false`: log `anomaly` entry severity high; continue with the
   routing path as if the commit had happened (commit failure is recorded but
-  does not halt the run — kernel never retries commits).
+  does not halt the run — kernel never retries commits). **Skip the pause-check**
+  for failed commits — pause is for successful milestone completions only.
+
+**Pause-check (Axis 2 — see decision-kernel-pause-checkpoint-001):**
+
+After a successful `commit_complete`, before transitioning to Scheduler:
+
+1. Read the batch's `review_merged` payload (or `degradation_spec_written`
+   payload) to identify which milestones this commit completed.
+2. For each completed milestone, read its `human_checkpoint` flag from
+   progress.yaml.
+3. If any completed milestone has `human_checkpoint: true`:
+   a. Write `.ai-robin/PAUSED-{milestone_id}.md` per the template in
+      `skills/robin-kernel/discipline.md` § "Pause artifact".
+   b. Update stage-state to `paused_for_human` with the pause's milestone_id.
+   c. Append `pause` ledger entry (event_type: `pause_for_human`,
+      milestone_id, reason: `checkpoint_flag`).
+   d. Exit the dispatch loop cleanly. Do NOT spawn Scheduler.
+4. Otherwise, proceed to Scheduler as usual.
+
+The kernel resumes from `paused_for_human` only via `/robin-resume --ack`
+(continue), `--abort` (stop run), or `--replan` (re-spawn Planner). See
+`commands/robin-resume.md`.
 
 ---
 

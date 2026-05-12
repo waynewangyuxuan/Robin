@@ -1,0 +1,175 @@
+spec_id: decision-kernel-pause-checkpoint-001
+type: decision
+state: draft
+
+intent:
+  summary: "Concretizes #10's pause-point protocol for milestone-level human checkpoints. Adds a paused_for_human kernel state, a run-mode taxonomy (autonomous / hybrid / dev) where hybrid pauses on risk:high milestones only, a per-milestone human_checkpoint flag, a per-milestone risk classification, and three resume verbs (--ack / --abort / --replan)."
+  detail: |
+    **Decision**: Robin's kernel state machine gains one new state and
+    three new resume actions. This is the first concrete instantiation
+    of the pause-point protocol described in
+    decision-pause-point-unification-001 and tracked by issue #10.
+
+    ## New state: `paused_for_human`
+
+    Reached after a successful Committer transition when the just-merged
+    milestone has `human_checkpoint: true`. Kernel writes
+    `.ai-robin/PAUSED-{milestone_id}.md` and exits the dispatch loop,
+    leaving stage-state in `paused_for_human` for resume.
+
+    `PAUSED-{milestone_id}.md` content:
+
+    ```markdown
+    # Paused after milestone {id}
+
+    **What was built:** {summary from change spec + ledger}
+    **Gate criteria status:** {pass / partial / N-A from review verdict}
+    **Next planned milestone:** {next id + name + scope}
+    **Resume options:**
+      - /robin-resume --ack       continue to next milestone
+      - /robin-resume --abort     stop run, mark remaining as not-built
+      - /robin-resume --replan    re-invoke Planner with current state as context
+    ```
+
+    ## Run-mode taxonomy
+
+    Selected at `/robin-start --run-mode <mode>` (default: `autonomous`).
+    Affects which milestones get `human_checkpoint: true`:
+
+    | Run mode | Default checkpoint policy |
+    |---|---|
+    | `autonomous` | All `false` (current behavior) |
+    | `hybrid` | `true` only for milestones with `risk: high` (see Plan-format change below) |
+    | `dev` | All `true` |
+
+    The hybrid rule is **risk-based, not gate-based**. Rationale: gate
+    is "Reviewer can verify this", which often correlates with
+    routine-but-verifiable work (e.g., every endpoint has a gated
+    contract test). If hybrid mirrored gate, it would pause on most
+    milestones in a typical project — too frequent. Risk captures
+    "if this is wrong, how hard is recovery", which is the actual
+    signal Wayne wants when deciding to look. Aligning hybrid to
+    risk: high makes pause count ~1-3 per project instead of ~8 of 10.
+
+    The flag does not override per-milestone explicit settings —
+    Planner can mark `human_checkpoint: true` on a milestone regardless
+    of run mode (e.g., for decisions known up-front to need human eyes).
+
+    ## Plan-format change
+
+    Add two fields to milestone schema in `progress.yaml`:
+
+    ```yaml
+    milestones:
+      - id: m3-auth
+        ...
+        gate: true                  # existing
+        gate_criteria: "..."        # existing
+        risk: high                  # new — 'low' | 'medium' | 'high', default 'low'
+        human_checkpoint: true      # new — defaults from run_mode + risk
+    ```
+
+    Risk classification heuristics are documented in
+    `skills/robin-planner/phases/phase-5-milestones.md` § "Risk
+    classification". Examples: irreversible schema migrations,
+    auth/credentials/PII, external integration with rate limits,
+    production config are `risk: high`. Tests, docs, internal
+    utilities are `risk: low` (default).
+
+    `gate`, `risk`, and `human_checkpoint` are three independent fields
+    — they may align under defaults but Planner can decouple them
+    per-milestone.
+
+    Concretized in skills/robin-planner/phases/phase-5-milestones.md.
+
+    ## Resume verb extensions
+
+    `/robin-resume` today only handles "resume after kill". Extend to:
+
+    | Verb | Trigger | Behavior |
+    |---|---|---|
+    | (none, current) | Run was killed mid-loop | Replay last unfinished step |
+    | `--ack` | State is `paused_for_human` | Mark checkpoint acknowledged, advance to next dispatch |
+    | `--abort` | State is `paused_for_human` | Mark all remaining milestones as `not_built`; transition to Finalizer |
+    | `--replan` | State is `paused_for_human` | Spawn Planner with `trigger: replan`, `rework_reason.kind: "human_checkpoint_replan"` |
+
+    ## Signal additions
+
+    `committer_done` signal extended:
+
+    ```yaml
+    committer_done:
+      ...existing fields...
+      milestone_completed: m3-auth
+      triggers_pause: true | false   # new — kernel branches on this
+    ```
+
+    Kernel routing on `committer_done`:
+    - `triggers_pause: false` → `dispatch_next_batch` (existing flow)
+    - `triggers_pause: true` → write `PAUSED-*.md`, transition to
+      `paused_for_human`, exit loop
+
+    ## What this is NOT
+
+    - Not a per-step (sub-milestone) pause. Granularity is milestone,
+      same as Reviewer's batch granularity. Sub-milestone pauses would
+      need a separate decision.
+    - Not a UI. The pause artifact is a markdown file the user reads in
+      their editor. Dashboard work (per #10) comes later and would
+      consume the same `PAUSED-*.md` files.
+    - Not a generalized pause-point registry. This decision implements
+      *one* pause point (post-Committer / pre-next-batch). The full
+      registry envisioned in decision-pause-point-unification-001 is
+      future work — this is the first instance to validate the shape.
+
+    ## Rationale
+
+    Two motivations from decision-daily-velocity-pivot-001:
+
+    1. The fear of "deviation in long autonomous runs" is best mitigated
+       by lowering the cost of human re-entry, not by adding more
+       internal review machinery.
+    2. Different tasks deserve different trust levels. A familiar
+       refactor merits `autonomous`; a new auth flow merits `dev`.
+       Run-mode is the user-facing knob.
+
+    The cost of this design is small: one new state, one new field,
+    one extended command. The benefit is making Robin usable for
+    tasks where the user wants long-running execution but reserves
+    judgment at certain points.
+
+    **Tracked by**: GitHub issue #10 (this is its first concrete
+    realization).
+
+constraints: []
+
+indexing:
+  type: decision
+  priority: P0
+  layer: feature
+  domain: "agent-kernel"
+  tags: ["state-machine", "hitl", "pause-point", "axis-2"]
+
+provenance:
+  source_type: chat_extraction
+  confidence: 0.85
+  source_ref: "Velocity-pivot conversation 2026-05-10; first instantiation of pause-point protocol from decision-pause-point-unification-001"
+  produced_by_agent: "wayne"
+  produced_at: "2026-05-10T00:00:00Z"
+
+relations:
+  - type: relates_to
+    ref: decision-pause-point-unification-001
+  - type: relates_to
+    ref: decision-daily-velocity-pivot-001
+  - type: relates_to
+    ref: intent-kernel-001
+
+anchors:
+  - file: "skills/robin-kernel/SKILL.md"
+  - file: "skills/robin-kernel/discipline.md"
+  - file: "skills/robin-planner/phases/phase-5-milestones.md"
+  - file: "contracts/dispatch-signal.md"
+  - file: "contracts/stage-state.md"
+  - file: "commands/robin-start.md"
+  - file: "commands/robin-resume.md"

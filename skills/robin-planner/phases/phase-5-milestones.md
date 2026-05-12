@@ -65,7 +65,77 @@ milestones:
     gate: true
     gate_criteria: "Migration runs cleanly against empty DB; schema
                     matches contract-db-schema-001."
+    risk: high                # see "Risk classification" below
+    human_checkpoint: false   # see "Human checkpoint flag" below
 ```
+
+## Risk classification (Axis 2 — drives hybrid-mode pausing)
+
+Each milestone has a `risk` field — one of `low` / `medium` / `high`.
+Defaults to `low` if omitted. Risk is **independent** of `gate`; gate is
+"can Reviewer verify this objectively", risk is "if this goes wrong,
+how hard is the recovery". They often correlate but not always (a
+schema migration is high-risk regardless of whether its acceptance test
+is automatable).
+
+**Assignment heuristics** (use these as starting points; override per
+project context):
+
+| `risk: high` | `risk: medium` | `risk: low` (default) |
+|---|---|---|
+| Irreversible schema migrations | New endpoints over existing data | Internal utility code |
+| Auth / credentials / PII handling | Frontend critical paths (login, checkout) | Tests, docs |
+| Production deploy config / secrets | CI/CD changes that affect prod | Style / lint cleanups |
+| External API integration with rate limits or contract drift | Refactors crossing 3+ files | Configuration in dev envs |
+| Concurrent state mutations across modules | First-time use of a new framework feature | Adding a new isolated module |
+| Cross-cutting / architectural changes | | |
+
+**Bias toward `medium`** when uncertain. `high` should mean "Wayne
+should look at this before more milestones build on top of it".
+
+## Human checkpoint flag (Axis 2 — decision-kernel-pause-checkpoint-001)
+
+Each milestone has a `human_checkpoint` boolean. When set to `true`, the
+kernel pauses to `paused_for_human` state immediately after this
+milestone's batch is committed (whether by Committer following a passed
+Review or by a Degrader-triggered commit). Resume requires
+`/robin-resume --ack` (continue), `--abort` (stop), or `--replan`
+(re-spawn Planner).
+
+**Default policy by run-mode** (set at `/robin-start --run-mode <mode>`):
+
+| Run mode | Default for `human_checkpoint` |
+|---|---|
+| `autonomous` (default) | All milestones `false` |
+| `hybrid` | `true` only for milestones with `risk: high`; `false` otherwise |
+| `dev` | All milestones `true` |
+
+**Per-milestone overrides**: Planner MAY set `human_checkpoint: true` on
+a specific milestone regardless of run-mode if there's an inherent
+reason (e.g., a milestone whose contracts are known to need human eyes
+before next milestones build on them). Per-milestone explicit values
+ALWAYS win over run-mode defaults.
+
+**Decoupling from `gate`**: `gate`, `risk`, and `human_checkpoint` are
+three independent fields:
+
+- `gate` — "Reviewer must verify a concrete criterion before this is
+  marked done"
+- `risk` — "How costly is recovery if this milestone is wrong"
+- `human_checkpoint` — "Pause execution after commit so the user
+  can review before continuing"
+
+`hybrid` mode couples `risk: high` → `human_checkpoint: true` by default,
+but Planner can decouple per-milestone (e.g., a `risk: medium` milestone
+with explicit `human_checkpoint: true` because its design has a
+specific concern; a `risk: high` milestone with `human_checkpoint: false`
+because the user said up-front "trust me on this one").
+
+**When NOT to set human_checkpoint**: never set it on milestones with
+no Reviewer gate AND no meaningful artifact. There's nothing for the
+user to meaningfully ack — they'd just type `--ack` blindly. Use
+checkpoints sparingly; their value is in the human actually reading
+what was built.
 
 ## Dependencies
 

@@ -1,5 +1,5 @@
 progress:
-  completion: 0.4   # MVP delivered; roadmap extensions pending
+  completion: 0.4   # MVP delivered; velocity-pivot work in flight
   milestones:
     - id: mvp-runnable
       name: "Core dispatch loop runnable end-to-end"
@@ -9,9 +9,78 @@ progress:
       evidence:
         - "DESIGN.md"
         - "docs/superpowers/plans/2026-04-17-ai-robin-plan-1-make-it-runnable.md"
-    - id: roadmap-extensions
-      name: "Post-MVP extensions (worktree / HITL / capability packs / dashboard etc.)"
-      status: in_progress
+
+    # Axis 1 — incremental entry (broadened #7). See decision-intake-mode-taxonomy-001.
+    - id: axis1-mode-signal
+      name: "Extend intake_complete signal with mode field + add setup_required / intake_aborted exit signals"
+      status: pending
       gate: false
-      evidence: []   # canonical tracking on GitHub issues #3-#10
+      depends_on: []
+      rooms_affected: ["01-intake", "12-kernel"]
+      contract_spec_ids: []   # to be filled when contracts/dispatch-signal.md gets a contract spec
+      gate_criteria: "contracts/dispatch-signal.md documents mode + new exit signals; existing tests / examples updated."
+
+    - id: axis1-meta-detection
+      name: "Intake META-detection prompt (option C — prompt user, never auto-invoke feature-room)"
+      status: pending
+      gate: false
+      depends_on: ["axis1-mode-signal"]
+      rooms_affected: ["01-intake"]
+      contract_spec_ids: []
+      gate_criteria: "skills/robin-intake/SKILL.md branches on META existence; manual repro: /robin-start --mode incremental_feature in repo without META yields the documented prompt with options 1/2/cancel."
+
+    - id: axis1-mode-phases
+      name: "Mode-specific intake phase scripts (new_project / incremental_feature / bug_fix / pr_continuation)"
+      status: pending
+      gate: true
+      depends_on: ["axis1-mode-signal", "axis1-meta-detection"]
+      rooms_affected: ["01-intake"]
+      contract_spec_ids: []
+      gate_criteria: "Each mode has a phase folder with documented Q&A and emits planning-ready specs; incremental_feature uses relations.extends to reference existing specs; bug_fix emits regression-test gate."
+
+    - id: axis1-planner-incremental
+      name: "Planner Phase 1 (situate) branches on mode and reads existing META as frozen context"
+      status: pending
+      gate: true
+      depends_on: ["axis1-mode-phases"]
+      rooms_affected: ["02-planner"]
+      contract_spec_ids: []
+      gate_criteria: "Planner emits incremental plan against existing room sequence numbering; existing active contracts are referenced not duplicated; smoke test on AI-Robin's own META passes."
+
+    # Axis 2 — pause-and-review (#10's first concretization). See decision-kernel-pause-checkpoint-001.
+    - id: axis2-checkpoint-flag
+      name: "Add human_checkpoint flag to milestone schema + run-mode taxonomy in /robin-start"
+      status: pending
+      gate: false
+      depends_on: []
+      rooms_affected: ["02-planner", "12-kernel"]
+      contract_spec_ids: []
+      gate_criteria: "phase-5-milestones.md documents the flag; /robin-start --run-mode {autonomous,hybrid,dev} sets defaults correctly; explicit per-milestone overrides honored."
+
+    - id: axis2-paused-state
+      name: "Kernel paused_for_human state + PAUSED-{milestone}.md artifact"
+      status: pending
+      gate: true
+      depends_on: ["axis2-checkpoint-flag"]
+      rooms_affected: ["12-kernel"]
+      contract_spec_ids: []
+      gate_criteria: "Manual repro: a milestone marked human_checkpoint:true causes kernel to write PAUSED-*.md and exit cleanly; stage-state reflects paused_for_human."
+
+    - id: axis2-resume-verbs
+      name: "Extend /robin-resume with --ack / --abort / --replan"
+      status: pending
+      gate: true
+      depends_on: ["axis2-paused-state"]
+      rooms_affected: ["12-kernel"]
+      contract_spec_ids: []
+      gate_criteria: "All three verbs work on a real paused run; --replan invokes Planner with rework_reason.kind: human_checkpoint_replan."
+
+    # Other roadmap items kept as a single placeholder; they will get
+    # their own milestones when they get prioritized (see context-roadmap-001).
+    - id: roadmap-other
+      name: "Other roadmap items (#3 worktree, #5a/b skill internalization, #6 post-run Q&A, #8 auto-approve, #9 stdlib, dashboard) — pending velocity-pivot delivery"
+      status: pending
+      gate: false
+      depends_on: ["axis1-planner-incremental", "axis2-resume-verbs"]
+      evidence: []
   commits: []        # intentionally unused — git log is authoritative
