@@ -32,8 +32,9 @@ From main agent at spawn:
 {
   "invocation_id": "string",
   "user_raw_input": "string — the user's initial request, including any pasted docs",
-  "project_root": "string — where to initialize the Feature Room structure",
-  "existing_meta": "boolean — whether META/ already exists (resume case)",
+  "project_root": "string — where the Feature Room lives (created in new_project mode, pre-existing in other modes)",
+  "mode": "'new_project' | 'incremental_feature' | 'bug_fix' | 'pr_continuation' | 'auto-detect' — Axis 1 intake mode; see decision-intake-mode-taxonomy-001",
+  "pr_ref": "string | null — required when mode == 'pr_continuation', otherwise null",
   "budgets": {
     "max_qna_turns": 15,
     "wall_clock_seconds": 1800
@@ -41,40 +42,58 @@ From main agent at spawn:
 }
 ```
 
-If `existing_meta: true`, this is a resume. Load existing Rooms and add to
-them rather than create from scratch.
+Mode handling:
+- `auto-detect` — Phase 0 resolves to `incremental_feature` (META exists)
+  or `new_project` (no META) and asks the user to confirm or switch.
+- `new_project` — fresh Room creation; works regardless of META presence
+  (will operate alongside if META exists).
+- `incremental_feature` / `bug_fix` / `pr_continuation` — require an
+  existing META/. If absent, Phase 0 prompts the user with three options
+  (run `/fr-init`, switch to new_project, or cancel) — see
+  decision-intake-meta-detection-001. Robin never auto-invokes the
+  Feature Room plugin (option C).
 
 ## Output contract
 
-Return a `dispatch-signal` of type:
-- `intake_complete` on success
-- `intake_blocked` only if user becomes unresponsive OR input is fundamentally
-  contradictory
+Return a `dispatch-signal` of one of:
+- `intake_complete` — success; `payload.mode` echoes the resolved mode.
+- `intake_blocked` — user unresponsive mid-Q&A or input fundamentally
+  contradictory.
+- `setup_required` — META precondition missing for the chosen mode and
+  user chose to bootstrap before continuing (Phase 0 early-exit).
+- `intake_aborted` — user explicitly cancelled at Phase 0's setup
+  prompt OR at any later phase (Phase 0 early-exit, or via Phase 5
+  if the user says stop). Distinct from `intake_blocked` (which means
+  Intake gave up, not the user).
 
-Primary artifacts:
-- `{project_root}/META/` directory tree with Room structure
+Primary artifacts (only when emitting `intake_complete`):
+- `{project_root}/META/` directory tree with Room structure (created in
+  new_project mode; updated in the other modes)
 - Spec yamls covering intents, constraints, conventions, contexts, decisions
-  (including agent-proxy decisions)
-- **All specs in `state: active`** — see `phases/phase-8-write-specs.md` for
-  rationale
+  (including agent-proxy decisions). For non-new_project modes, new specs
+  use `relations.extends` to reference pre-existing specs in the same
+  rooms.
+- **All specs in `state: active`** — see `phases/phase-8-write-specs.md`
+  for rationale
 
-## Execution — ten phases
+## Execution — eleven phases
 
 Load each phase file at the start of that phase. When done, move on (you don't
 need to re-read a completed phase's file).
 
 | Phase | File | One-liner |
 |---|---|---|
-| 1. Ingest | `phases/phase-1-ingest.md` | Read raw input; build mental model; classify project type |
-| 2. Gap analysis | `phases/phase-2-gap-analysis.md` | Walk decision taxonomy; classify each point as covered/derivable/proxy-able/must-ask |
+| 0. Pre-flight | `phases/phase-0-preflight.md` | Resolve mode (auto-detect → confirm with user); verify META precondition for non-new_project modes; emit setup_required / intake_aborted early-exit if needed |
+| 1. Ingest | `phases/phase-1-ingest.md` | Read raw input; build mental model; classify project type. For non-new_project modes, also load existing META as frozen context. |
+| 2. Gap analysis | `phases/phase-2-gap-analysis.md` | Walk decision taxonomy; classify each point as covered/derivable/proxy-able/must-ask. Scope narrows for incremental_feature / bug_fix / pr_continuation. |
 | 3. Prioritize | `phases/phase-3-prioritize.md` | Rank must-ask items by blast radius, reversibility, ask-ability |
 | 4. Ask | `phases/phase-4-ask.md` | One question at a time, iteratively; 15-turn cap |
 | 5. Handle responses | `phases/phase-5-handle-response.md` | Parse answers; detect new gaps; loop or exit |
 | 6. Proxy | `phases/phase-6-proxy.md` | Fill remaining gaps with defensible defaults; write Agent proxy notes |
-| 7. Init rooms | `phases/phase-7-init-rooms.md` | Create Feature Room directory structure |
-| 8. Write specs | `phases/phase-8-write-specs.md` | Convert gathered info into spec yamls |
-| 9. Self-check | `phases/phase-9-self-check.md` | Run completeness check; fix failures or block |
-| 10. Return | `phases/phase-10-return.md` | Emit `intake_complete` or `intake_blocked` signal |
+| 7. Init rooms | `phases/phase-7-init-rooms.md` | Create (new_project) or update (others) Feature Room directory structure |
+| 8. Write specs | `phases/phase-8-write-specs.md` | Convert gathered info into spec yamls. Mode-specific: new_project creates fresh room numbering; others continue existing sequence and emit `relations.extends` references. |
+| 9. Self-check | `phases/phase-9-self-check.md` | Run completeness check; fix failures or block. bug_fix mode additionally verifies a regression-test acceptance constraint exists. |
+| 10. Return | `phases/phase-10-return.md` | Emit `intake_complete` / `intake_blocked` / `setup_required` / `intake_aborted` signal |
 
 ## Who you are to the user
 

@@ -30,13 +30,19 @@ Load before starting:
 From main agent at spawn. Three triggers:
 
 - **`initial`** — first planning invocation; input includes
-  `consumer_output` from `intake_complete`
+  `consumer_output` from `intake_complete`. The `consumer_output.mode`
+  field (one of `new_project` / `incremental_feature` / `bug_fix` /
+  `pr_continuation`) sub-branches Phase 1 — see decision-intake-mode-taxonomy-001.
 - **`replan`** — re-invocation; input includes `rework_reason` with
-  `kind: "review_fail"` OR `kind: "research_return"`
+  `kind: "review_fail"` OR `kind: "research_return"` OR
+  `kind: "human_checkpoint_replan"` (Axis 2 — see decision-kernel-pause-checkpoint-001).
+  For `human_checkpoint_replan`, `rework_reason.paused_milestone_id`
+  identifies the paused milestone and optional `rework_reason.user_note`
+  carries the user's reasoning.
 - **`sub_planning`** — nested planning for a sub-scope; input includes
   `parent_plan_refs`
 
-See Phase 1 for how each trigger is handled.
+See Phase 1 for how each trigger and mode is handled.
 
 ## Output contract
 
@@ -53,9 +59,14 @@ for `sub_planning`):
 - `decision-*.yaml` — technical decisions
 - `contract-*.yaml` — inter-module API contracts (critical)
 - `constraint-*.yaml` — derived constraints
-- `progress.yaml` with milestones + dependencies + gate criteria
+- `progress.yaml` with milestones + dependencies + gate criteria + `risk`
+  and `human_checkpoint` fields per milestone (Axis 2 — see
+  `phases/phase-5-milestones.md` § "Risk classification" and
+  "Human checkpoint flag")
 
-All specs `state: active`.
+All specs `state: active`. For non-`new_project` modes, new specs use
+`relations.extends` to reference pre-existing active specs rather than
+duplicating them (see Phase 1 mode sub-branches).
 
 ## Execution — nine phases
 

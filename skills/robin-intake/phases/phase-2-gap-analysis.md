@@ -51,3 +51,18 @@ Phase 4 to take multiple rounds.
 If your must-ask list is 0, something is probably wrong (over-eager
 proxying). Re-check — the user likely has non-trivial preferences you
 missed.
+
+## Mode-specific scope narrowing
+
+The full decision-taxonomy applies to `new_project`. For other modes,
+narrow the scope:
+
+| Mode | Taxonomy scope |
+|---|---|
+| `new_project` | Full taxonomy, full classification. |
+| `incremental_feature` | Skip decision points already answered in pre-existing active specs (loaded in Phase 1). The remaining set is the "delta surface". Typical must-ask count drops to 1-3 (vs ~10 for new_project). |
+| `bug_fix` | Only ask points that affect bug resolution or acceptance criteria. Skip strategic / architectural points entirely — they're determined by existing code + the bug's root cause. Typical must-ask: 1-2 (repro steps + acceptance definition). |
+| `pr_continuation` | Only ask points the PR diff and reviewer comments don't resolve. Reviewer asks themselves are de facto must-asks already. Typical must-ask: 0-2 (rarely needs a fresh question — comments cover most). |
+
+**Why narrow**: re-asking the user about decisions encoded in existing
+META is friction with no benefit. Trust the existing specs.

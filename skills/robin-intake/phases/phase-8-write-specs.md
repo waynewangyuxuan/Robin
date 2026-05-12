@@ -5,6 +5,57 @@
 Convert everything you gathered (Phases 1-6) into spec yamls. Load
 `stdlib/feature-room-spec.md` for the exact schema.
 
+## Mode affects spec emission
+
+Numbering, relations, and required-spec sets differ by `mode`
+(resolved in Phase 0):
+
+### `new_project`
+
+- Fresh numbering for every spec in every room (start at `001`).
+- `relations` typically empty (no pre-existing specs to reference).
+- Full required set: at least one intent per room, plus any
+  constraints / decisions / conventions / context the Q&A surfaced.
+
+### `incremental_feature`
+
+- **Continue the room's existing sequence**. If `01-api/specs/`
+  already has `intent-api-001` through `intent-api-005`, your new
+  intent is `intent-api-006`. Read each room's `specs/` directory
+  before assigning IDs.
+- New specs MUST use `relations.extends` to reference the
+  pre-existing spec they build on, when the delta is additive to an
+  existing intent. Example: an `intent-api-006` that adds a new
+  endpoint to an existing feature extends `intent-api-003`.
+- Minimal required set: at least one new intent (or one decision /
+  constraint, if the delta is purely a constraint change). Do NOT
+  re-emit specs that already cover the topic — extend or reference.
+
+### `bug_fix`
+
+- Emit ONE narrow intent: `intent-bug-{shortname}-001` where
+  `{shortname}` is a 3-5-word slug derived from the bug description.
+  Place in the room whose code is affected.
+- Emit ONE acceptance constraint: `constraint-bug-{shortname}-acceptance-001`
+  with a regression-test gate. Phase 9 self-check verifies this.
+- `relations.relates_to` should point at the existing intent for
+  the buggy feature (if discoverable from the user's bug report).
+- Do NOT emit decisions / conventions / context unless the bug
+  surfaces a genuinely new one (rare).
+
+### `pr_continuation`
+
+- Emit intent + constraints derived from the PR's diff, description,
+  and reviewer comments — NOT from a fresh Q&A. Phase 1's PR-loading
+  did the extraction; this phase just writes.
+- `provenance.source_type: pr_extraction` (a new value alongside the
+  existing four; treat it like `user_input` with confidence 0.85 by
+  default). Include `pr_ref` (URL or number) in `provenance.source_ref`.
+- `relations.extends` references the pre-existing specs the PR is
+  building on (if discoverable from the affected files' anchors).
+- Reviewer asks become **constraints** with provenance citing the
+  comment author and URL.
+
 ## Typical outputs
 
 - **`intent-*.yaml`** — one per top-level functional goal

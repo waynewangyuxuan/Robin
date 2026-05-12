@@ -2,8 +2,22 @@
 
 **Autonomy: explicit (follows feature-room-spec conventions)**
 
-Based on the project's scope and scale inferred in Phases 1-2, create the
-Feature Room directory structure.
+Behavior depends on `mode` (resolved in Phase 0):
+
+- **`new_project`**: create the Feature Room directory structure from
+  scratch based on the project's scope and scale inferred in Phases 1-2.
+  Use the patterns and rules below.
+- **`incremental_feature` / `bug_fix` / `pr_continuation`**: META/
+  already exists (verified in Phase 0). Do NOT create or rename
+  existing rooms. You MAY add a new room if the change introduces a
+  genuinely new functional domain not covered by any existing room —
+  but the default is to slot new specs into an existing room. If a
+  new room IS needed, ID it by continuing the existing numeric
+  sequence (e.g., if rooms 00-04 exist, the new one is 05). Update
+  `_tree.yaml` and `00-project-room/spec.md` accordingly.
+
+The patterns below apply to `new_project` mode (and to the rare new-room
+case in the other modes).
 
 ## Two common patterns
 

@@ -26,6 +26,17 @@ phase applies it.
    Agent read only the specs you wrote, could it produce a plan
    without further clarification from the user?
 
+## Mode-specific additional checks
+
+Run these AFTER the six core checks; failures here also block return.
+
+| Mode | Extra check |
+|---|---|
+| `new_project` | None beyond the core six. |
+| `incremental_feature` | (a) Every new spec MUST have at least one `relations.extends` or `relations.relates_to` entry pointing at a pre-existing active spec — orphan deltas are not allowed. (b) No re-emission: scan new specs for spec_ids that already exist in the same room; if duplicate, you over-wrote (failure → fix in Phase 8). |
+| `bug_fix` | (a) Exactly one intent with id matching `intent-bug-*` exists. (b) Exactly one constraint with id matching `constraint-bug-*-acceptance-*` exists, and its content describes a regression-test gate verifiable by Reviewer (not "user accepts"). (c) The bug intent's `relations.relates_to` points at an existing feature intent. |
+| `pr_continuation` | (a) `pr_ref` is recorded in `provenance.source_ref` of every emitted spec. (b) Every reviewer-comment-derived constraint cites the comment author/URL. (c) At least one `relations.extends` exists, pointing at a pre-existing spec in the affected room. |
+
 ## How to apply the Planning-ready test
 
 Mentally simulate: you are Planning Agent, you just got spawned with

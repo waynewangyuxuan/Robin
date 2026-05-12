@@ -150,9 +150,9 @@ indexing:
   tags: ["{short tags for cross-cutting retrieval}"]
 
 provenance:
-  source_type: {user_input|prd_extraction|chat_extraction|manual_input|
-                agent_proxy|research_derived|planning_derived|anchor_tracking|
-                degradation_trigger}
+  source_type: {user_input|prd_extraction|chat_extraction|pr_extraction|
+                manual_input|agent_proxy|research_derived|planning_derived|
+                anchor_tracking|degradation_trigger}
   confidence: {0.0 to 1.0 — see confidence-scoring.md}
   source_ref: "{description of source: 'user message @ 14:32', 'research findings
               research-auth-providers.md', 'planning iter 2 decision', etc.}"
@@ -194,6 +194,25 @@ When this happens:
   user hints in the input suggested this direction
 - All `agent_proxy` specs are listed in the `intake_complete` signal's
   `agent_proxy_decisions` field, so human verifier can quickly audit them
+
+---
+
+## `pr_extraction` source_type (AI-Robin specific, Axis 1)
+
+Used by Intake's `pr_continuation` mode when specs are derived from a
+GitHub Pull Request's diff, description, and reviewer comments rather
+than a fresh Q&A. See decision-intake-mode-taxonomy-001.
+
+When this applies:
+- Spec's `provenance.source_type: pr_extraction`
+- Spec's `provenance.confidence` is moderate-high (typically 0.85),
+  representing "derived from concrete artifacts (PR diff + comments),
+  not from chat"
+- Spec's `provenance.source_ref` MUST include the PR URL or
+  `pr_number` (e.g., `"PR https://github.com/owner/repo/pull/42 @
+  commit a3f9c1d, reviewer @alice's comment on apps/api/foo.ts:42"`)
+- Reviewer-comment-derived constraints additionally cite the comment
+  author in `source_ref`
 
 ---
 

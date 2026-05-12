@@ -59,6 +59,7 @@ Payload:
 ```json
 {
   "mode": "'new_project' | 'incremental_feature' | 'bug_fix' | 'pr_continuation' — which intake flow ran; selected at /robin-start time or auto-detected, see decision-intake-mode-taxonomy-001",
+  "pr_ref": "string | null — REQUIRED non-null iff mode == 'pr_continuation'; URL or repo#number of the PR being continued; null otherwise. Echoed from /robin-start --pr so Planner can read PR state directly without scanning provenance.",
   "project_root": "string — path where Feature Room lives (created in new_project mode, pre-existing in other modes)",
   "rooms_created": ["string — list of room ids created (new_project) OR updated (other modes)"],
   "rooms_referenced": ["string — OPTIONAL; for non-new_project modes, list of pre-existing room ids the new specs reference via relations.extends"],
